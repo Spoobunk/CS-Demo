@@ -1,38 +1,45 @@
 Object = require "libs.classic.classic" 
 vector = require "libs.hump.vector"
 
+AnimComponent = require "scripts.entities.enemies.enemy_testanim"
+
 Enemy = require "scripts.entities.enemies.enemy_base"
 
 ET = Enemy:extend()
 
 function ET:new(x, y, collision_world)
   ET.super.new(self, x, y, collision_world)
-  self.et_sheet = love.graphics.newImage('assets/test/sprites/enemy test sheet.png')
-  local walk_grid = anim8.newGrid(57, 75, self.et_sheet:getWidth(), self.et_sheet:getHeight(), 0, 0, 2)
-  local attack_grid = anim8.newGrid(97, 75, self.et_sheet:getWidth(), self.et_sheet:getHeight(), 1, 81, 2)
-  self.walk_anim = anim8.newAnimation(walk_grid('1-4', 1), .1)
-  self.attack_anim = anim8.newAnimation(attack_grid('1-4', 1, '1-2', 2), .5)
+  self.ETAnim = AnimComponent(self)
   --self.quad = walk_grid('1-2', 1)[1]
   self.speed = 10
   self.collider = self.collision_world:circle(self.pos.x, self.pos.y, 100)
+  self.collider.tag = "Enemy"
+  self.collider.object = self
 end
 
 function ET:update(dt)
-  self.walk_anim:update(dt)
+  ET.super.update(self, dt)
+  self.ETAnim:update(dt)
 end
 
 function ET:draw()
-  self.walk_anim:draw(self.et_sheet, self.pos:unpack())
+  self.ETAnim:draw(self.pos:unpack())
   love.graphics.setColor(255, 0, 0, 1)
-  love.graphics.rectangle('line', self.pos.x, self.pos.y, self.walk_anim:getDimensions())
+  --love.graphics.rectangle('line', self.pos.x, self.pos.y, self.ETAnim:getCurrentAnim():getDimensions())
+  love.graphics.points(self.pos:unpack())
   --love.graphics.draw(self.et_sheet, self.quad)
   self.collider:draw()
+  love.graphics.line(self.pos.x - 30, self:getRenderPosition(), self.pos.x + 30, self:getRenderPosition())
+  love.graphics.setColor(255, 255, 255, 1)
+end
+
+function ET:alertedToPlayer()
+  self.ETAnim:switchAnimation('idle')
 end
 
 function ET:getRenderPosition()
-  local offsetX, offsetY = self.walk_anim:getDimensions()
-  --local offsetx, offsetY = self.img:getWidth()
-  return self.pos.x + offsetX, self.pos.y + offsetY
+  local oy = self.ETAnim:getBaseImageOffset().y
+  return math.floor((self.pos.y + oy) + 0.5)
 end
   
 return ET

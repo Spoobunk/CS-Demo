@@ -41,6 +41,8 @@ function Player:new(x, y, collision_world, tile_world)
   
   self.collision_world = collision_world
   self.collider = self.collision_world:circle(self.position.x, self.position.y, 50)
+  self.collider.tag = "Player"
+  self.collider.object = self
   self.test_guy = self.collision_world:rectangle(400, 400, 100, 100)
   self.test_guy2 = self.collision_world:circle(100, 300, 100)
 
@@ -118,7 +120,7 @@ function Player:draw()
   love.graphics.setColor(0, 0, 255, 1)
 
   -- drawing hardon colliders
-  --self.collider:draw()
+  self.collider:draw()
   self.test_guy:draw()
   self.test_guy2:draw()
   --self.hit:draw()
@@ -143,10 +145,13 @@ function Player:update(dt, move_input_x, move_input_y)
   self.collider:moveTo(self.position:unpack())
   local collisions = self.collision_world:collisions(self.collider)
   for other, separating_vector in pairs(collisions) do
-    self.collider:move(separating_vector.x, separating_vector.y)
-    self.position = vector(self.collider:center())
-    self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y))
-    --other:move(-separating_vector.x/2, -separating_vector.y/2)
+    if(other.tag == "Enemy") then
+    else
+      self.collider:move(separating_vector.x, separating_vector.y)
+      self.position = vector(self.collider:center())
+      self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y))
+      --other:move(-separating_vector.x/2, -separating_vector.y/2)
+    end
   end
   
   --self.sprite_pos = self.position - self.image_offset
