@@ -1,2 +1,2 @@
 # CS-Demo
-Demo of the CS Project,
+Demo of the CS Project.
