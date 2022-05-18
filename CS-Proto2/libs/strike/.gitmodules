@@ -1,0 +1,3 @@
+[submodule "DeWallua"]
+	path = lib/DeWallua
+	url = https://github.com/Aweptimum/DeWallua
