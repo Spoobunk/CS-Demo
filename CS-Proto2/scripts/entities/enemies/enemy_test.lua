@@ -24,7 +24,7 @@ end
 function ET:draw()
   self.walk_anim:draw(self.et_sheet, self.pos:unpack())
   love.graphics.setColor(255, 0, 0, 1)
-  love.graphics.rectangle('line', self.pos.x, self.pos.y, self.attack_anim:getDimensions())
+  love.graphics.rectangle('line', self.pos.x, self.pos.y, self.walk_anim:getDimensions())
   --love.graphics.draw(self.et_sheet, self.quad)
   self.collider:draw()
 end
