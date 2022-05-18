@@ -23,8 +23,9 @@ function EntityAnim:update(dt)
   self.current_anim:update(dt)
 end
 
-function EntityAnim:draw(x,  y)
+function EntityAnim:draw(x, y, direction)
   local offsetX, offsetY = self:Get_Draw_Offset(self.current_anim:getDimensions())
+  local drawn_anim = function(x) if x > 0 then return self.current_anim else return self.current_anim:flipH() end end
   self.current_anim:draw(self.sheet, x, y, 0, 1, 1, offsetX, offsetY)
 end
 
@@ -47,6 +48,10 @@ function EntityAnim:switchAnimation(new_anim)
   else
     error(("Attempted to switch to the non-existant animation, %s, on entity {entity code}"):format(new_anim))
   end
+end
+
+function EntityAnim:flipSpriteHorizontal()
+  self.current_anim:flipH()
 end
 
 function EntityAnim:getCurrentAnim()

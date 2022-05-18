@@ -45,6 +45,9 @@ function Player:new(x, y, collision_world, tile_world)
   self.collider.object = self
   self.test_guy = self.collision_world:rectangle(400, 400, 100, 100)
   self.test_guy2 = self.collision_world:circle(100, 300, 100)
+  self.test_guy.tag = 'Test'
+  self.test_guy2.tag = 'Test'
+
 
   self.tile_world = tile_world
   -- the the x, y coords of the tile_collider relative to the player's pos
@@ -145,8 +148,7 @@ function Player:update(dt, move_input_x, move_input_y)
   self.collider:moveTo(self.position:unpack())
   local collisions = self.collision_world:collisions(self.collider)
   for other, separating_vector in pairs(collisions) do
-    if(other.tag == "Enemy") then
-    else
+    if(other.tag == "Test") then
       self.collider:move(separating_vector.x, separating_vector.y)
       self.position = vector(self.collider:center())
       self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y))
