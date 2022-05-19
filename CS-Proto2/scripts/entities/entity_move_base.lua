@@ -44,4 +44,10 @@ function EntityMove:setMovementSettings(dir, vel, acc, fric, max_vel)
   self.max_velocity = max_vel or self.max_velocity
 end
 
+function EntityMove:defaultMovementSettings()
+  self.acceleration = self.RUN_ACC
+  self.friction = self.RUN_FRIC
+  self.max_velocity = self.RUN_MAX_VEL
+end
+
 return EntityMove

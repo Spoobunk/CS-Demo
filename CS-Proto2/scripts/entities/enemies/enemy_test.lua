@@ -27,6 +27,7 @@ ET.attacks = {
 function ET:new(x, y, collision_world)
   ET.super.new(self, x, y, collision_world)
   self.state = ET.state.idle
+  self.current_attack = nil
   
   --Anim setup
   local et_sheet = love.graphics.newImage('assets/test/sprites/enemy test sheet.png')
@@ -35,7 +36,8 @@ function ET:new(x, y, collision_world)
   local attack_grid = anim8.newGrid(97, 75, et_sheet:getWidth(), et_sheet:getHeight(), 1, 79, 2)
   local idle_grid = anim8.newGrid(47, 78, et_sheet:getWidth(), et_sheet:getHeight(), 235, 0, 2)
   self.Anim:addAnimation('walk', anim8.newAnimation(walk_grid('1-4', 1), .1), 75)
-  self.Anim:addAnimation('attack', anim8.newAnimation(attack_grid('1-4', 1, '1-2', 2), .1), 75)
+  self.Anim:addAnimation('attack_windup', anim8.newAnimation(attack_grid('1-2', 1), .1, 'pauseAtEnd'), 75)
+  self.Anim:addAnimation('attack', anim8.newAnimation(attack_grid('3-4', 1, '1-2', 2), .1), 75)
   self.Anim:addAnimation('idle', anim8.newAnimation(idle_grid('1-2', 1), .5), 77)
   
   -- super slippery movement
@@ -65,7 +67,10 @@ function ET:update(dt)
   ET.super.update(self, dt)
   self.Anim:update(dt)
   self.Move:update(dt)
-  
+  if(self.current_attack) then
+    self.current_attack:update(dt)
+  end
+
    self.pos = self.pos + self.Move:getMovementStep(dt)
   
   if(self.following_player and self.player) then
@@ -114,11 +119,12 @@ end
 function ET:getInAttackPosition()
   if(self.state == ET.state.alerted) then
     self.state = ET.state.attacking
-    self.following_player = false
+    self.current_attack = basic_attack(self)
+    --[[self.following_player = false
     local target = vector(self.player.position.x + 10, self.player.position.y)
     local toward_target = target - self.pos
     toward_target = toward_target:normalizeInplace()
-    self.Move:setMovementSettings(toward_target)
+    self.Move:setMovementSettings(toward_target)]]
   end
 end
 
