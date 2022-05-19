@@ -14,6 +14,12 @@ ET.state = {
     vulnerable = true
   },
   alerted = {
+    enter = function(self) 
+      self.Anim:switchAnimation('walk')
+      self.facing_player = true
+      self.Move:defaultMovementSettings() 
+      self.following_player = true
+    end,
     vulnerable = true
   },
   attacking = {
@@ -37,14 +43,13 @@ function ET:new(x, y, collision_world)
   local idle_grid = anim8.newGrid(47, 78, et_sheet:getWidth(), et_sheet:getHeight(), 235, 0, 2)
   self.Anim:addAnimation('walk', anim8.newAnimation(walk_grid('1-4', 1), .1), 75)
   self.Anim:addAnimation('attack_windup', anim8.newAnimation(attack_grid('1-2', 1), .1, 'pauseAtEnd'), 75)
-  self.Anim:addAnimation('attack', anim8.newAnimation(attack_grid('3-4', 1, '1-2', 2), .1), 75)
+  self.Anim:addAnimation('attack', anim8.newAnimation(attack_grid('3-4', 1, '1-2', 2), .02), 75)
   self.Anim:addAnimation('idle', anim8.newAnimation(idle_grid('1-2', 1), .5), 77)
   
   -- super slippery movement
   --self.Move = MoveComponent(50, 0.15, 1200)
   self.Move = MoveComponent(4, 0.09, 150)
-    
-  self.speed = 3
+
   self.collider = self.collision_world:circle(self.pos.x, self.pos.y, 100)
   self.collider.tag = "Enemy"
   self.collider.object = self
@@ -60,7 +65,8 @@ function ET:new(x, y, collision_world)
   
   self.following_player = false
   -- variable that saves whether the player was to the right or left of the entity during the last update. For comparing with the current position of the player to decide when to flip the sprite horizontally.
-  self.player_was_to = "left"
+  self.player_was_to = 1
+  self.facing_player = true
 end
 
 function ET:update(dt)
@@ -73,7 +79,7 @@ function ET:update(dt)
 
    self.pos = self.pos + self.Move:getMovementStep(dt)
   
-  if(self.following_player and self.player) then
+  if(self.player and self.following_player) then
     self.Move:setMovementSettings(self.toward_player)
     --self.pos = self.pos + (self.toward_player * self.speed) * (1+dt)
   end
@@ -82,8 +88,9 @@ function ET:update(dt)
     self.trigger_attack_area:moveTo(self.player.position:unpack())
   end
   
-  if(self.player) then
-    if self.player_was_to ~= self.player_is_to then self.Anim:flipSpriteHorizontal() end
+  if(self.player and self.facing_player) then
+    self.Anim:flipSpriteHorizontal(self.player_is_to)
+    --if self.player_was_to ~= self.player_is_to then self.Anim:flipSpriteHorizontal(self.player_is_to) end
   end
   
   self.player_was_to = self.player_is_to
@@ -120,12 +127,18 @@ function ET:getInAttackPosition()
   if(self.state == ET.state.alerted) then
     self.state = ET.state.attacking
     self.current_attack = basic_attack(self)
+    self.Anim:flipSpriteHorizontal(self.player_is_to)
     --[[self.following_player = false
     local target = vector(self.player.position.x + 10, self.player.position.y)
     local toward_target = target - self.pos
     toward_target = toward_target:normalizeInplace()
     self.Move:setMovementSettings(toward_target)]]
   end
+end
+
+function ET:changeStates()
+  self.state = ET.state.alerted
+  ET.state.alerted.enter(self)
 end
 
 function ET:getRenderPosition()

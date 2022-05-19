@@ -7,6 +7,7 @@ function EntityAnim:new(base_offset_x, base_offset_y, sheet)
   self.anims = {}
   self.current_anim = nil
   self.current_ground_level = 0
+  self.horizontal_flip = false
   self.sheet = sheet
   -- wherever you want the left and bottom of your frames to be, relative to the object's position
   self.image_offset = vector(base_offset_x, base_offset_y)
@@ -25,8 +26,8 @@ end
 
 function EntityAnim:draw(x, y, direction)
   local offsetX, offsetY = self:Get_Draw_Offset(self.current_anim:getDimensions())
-  local drawn_anim = function(x) if x > 0 then return self.current_anim else return self.current_anim:flipH() end end
-  self.current_anim:draw(self.sheet, x, y, 0, 1, 1, offsetX, offsetY)
+  --local drawn_anim = self.horizontal_flip and self.current_anim else return self.current_anim:flipH() end end
+  self.current_anim:flipH(self.horizontal_flip):draw(self.sheet, x, y, 0, 1, 1, offsetX, offsetY)
 end
 
 function EntityAnim:addAnimation(name, anim_object, ground_level)
@@ -50,9 +51,13 @@ function EntityAnim:switchAnimation(new_anim)
   end
 end
 
-function EntityAnim:flipSpriteHorizontal()
-  self.current_anim:flipH()
+function EntityAnim:flipSpriteHorizontal(face_direction)
+  self.horizontal_flip = face_direction > 0
+  --self.current_anim:flipH(face_direction)
 end
+
+--function EntityAnim:changeSpeed(anim, speed)
+  --self.anims[anim] = anim8
 
 function EntityAnim:getCurrentAnim()
   return self.current_anim

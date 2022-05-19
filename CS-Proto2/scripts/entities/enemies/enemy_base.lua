@@ -33,7 +33,7 @@ function enemy_base:update(dt)
   if self.player then self.toward_player = self.player.position - self.pos self.toward_player:normalizeInplace() end
   -- updates the variable telling whether is to the right or left of the enemy
   if self.player then
-    if self.player.position.x > self.pos.x then self.player_is_to = 'right' else self.player_is_to = 'left' end
+    if self.player.position.x > self.pos.x then self.player_is_to = 1 else self.player_is_to = -1 end
   end
 end
 
