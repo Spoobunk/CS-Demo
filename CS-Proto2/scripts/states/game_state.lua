@@ -77,7 +77,7 @@ function game_state:enter()
   
   
   local e_boy = e_test(50, 50)
-  local e_guy = et(400, 0, entity_collision)
+  local e_guy = et(400, 0, entity_collision, tile_world)
   entity_manager:addEntity(e_boy)
   entity_manager:addEntity(p)
   entity_manager:addEntity(e_guy)

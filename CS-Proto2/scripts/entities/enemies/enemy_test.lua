@@ -45,20 +45,24 @@ ET.state = {
 
     end,
     vulnerable = true
-  }
+  },
+  hitstun = {
+    
+  },
 }
 
 ET.attacks = {
     basic = basic_attack
 }
-function ET:new(x, y, collision_world)
-  ET.super.new(self, x, y, collision_world)
+function ET:new(x, y, collision_world, tile_world)
+  ET.super.new(self, x, y, collision_world, tile_world)
   self.state = ET.state.idle
   self.current_attack = nil
   
   --Anim setup
   local et_sheet = love.graphics.newImage('assets/test/sprites/enemy test sheet.png')
-  self.Anim = AnimComponent(math.floor(47 / 2), 23, et_sheet)
+  self.base_image_offset = vector(math.floor(47 / 2), 23)
+  self.Anim = AnimComponent(self.base_image_offset.x, self.base_image_offset.y, et_sheet)
   local walk_grid = anim8.newGrid(57, 75, et_sheet:getWidth(), et_sheet:getHeight(), 0, 0, 2)
   local attack_grid = anim8.newGrid(97, 75, et_sheet:getWidth(), et_sheet:getHeight(), 1, 79, 2)
   local idle_grid = anim8.newGrid(47, 78, et_sheet:getWidth(), et_sheet:getHeight(), 235, 0, 2)
@@ -77,29 +81,43 @@ function ET:new(x, y, collision_world)
   self.trigger_attack_area = nil
   
   
+  -- How this works: the collision resolution table specifies how to resolve collisions between colliders with certain tags. When a collider attached to this object collides with something, it goes here to look for how to resolve it, using the tag of the collided object.
   self.collision_resolution = {
-    Player = function() self:alertedToPlayer() end,
-    Attack_Trigger = function() self:getInAttackPosition() end
+    Enemy = {Player = function() self:alertedToPlayer() end,
+              Attack_Trigger = function() self:getInAttackPosition() end,
+              Player_Attack = function() self:abortAttack() end,
+              Testy = function(separating) normal = vector(separating.x, separating.y) self.Move:setMovementSettings(normal / 2) end}
   }
   
   self.following_player = false
-  -- variable that saves whether the player was to the right or left of the entity during the last update. For comparing with the current position of the player to decide when to flip the sprite horizontally.
-  self.player_was_to = 1
   self.facing_player = true
+  
+  --self.tile_world = tile_world
+  -- the the x, y coords of the tile_collider relative to the enemy's pos
+  --self.tile_collider_offset = vector(10, 0)
+  -- sets up the tile collider
+  --self.tile_collider = self.tile_world:add(self, self.pos.x - self.tile_collider_offset.x, self.pos.y - self.tile_collider_offset.y, 25, 24)
+  self:setUpTileCollider(self.pos.x, self.pos.y, 10, 0, 25, 24)
 end
 
 function ET:update(dt)
-  ET.super.update(self, dt)
+  
   self.Anim:update(dt)
   self.Move:update(dt)
   if(self.current_attack) then
     self.current_attack:update(dt)
   end
-
-  self.ground_pos = self.ground_pos + self.Move:getMovementStep(dt)
-  self.pos = self.ground_pos - vector(0, self.height)
+  --[[
+  local move_step = self.Move:getMovementStep(dt)
+  local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
+  local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y)
+  self.ground_pos = vector(actualX, actualY) + self.tile_collider_offset
+  ]]
+  --self.ground_pos = self.ground_pos + self.Move:getMovementStep(dt)
+  --self.pos = self.ground_pos - vector(0, self.height)
   
-  if(self.player and self.following_player) then
+  
+  if(self.player and self.state == ET.state.alerted) then
     self.Move:setMovementSettings(self.toward_player)
     --self.pos = self.pos + (self.toward_player * self.speed) * (1+dt)
   end
@@ -109,17 +127,20 @@ function ET:update(dt)
   end
   
   --self.player_was_to = self.player_is_to
+  -- the update function of the superclasses has to come after updating the attack, otherwise the height variable will be all off.
+  ET.super.update(self, dt)
 end
 
 function ET:draw()
   self.Anim:draw(self.pos.x, self.pos.y)
-  love.graphics.setColor(255, 0, 0, 1)
+  love.graphics.setColor(1, 0, 0, 1)
   --love.graphics.rectangle('line', self.pos.x, self.pos.y, self.Anim:getCurrentAnim():getDimensions())
   love.graphics.points(self.pos:unpack())
 
   self:drawColliders()
+  self:drawTileCollider()
   love.graphics.line(self.pos.x - 30, self:getRenderPosition(), self.pos.x + 30, self:getRenderPosition())
-  love.graphics.setColor(255, 255, 255, 1)
+  love.graphics.setColor(1, 1, 1, 1)
 end
 
 function ET:alertedToPlayer()
@@ -145,14 +166,21 @@ function ET:getInAttackPosition()
   end
 end
 
+function ET:abortAttack()
+  if(self.current_attack) then
+    self.current_attack:exit()
+  end
+end
+
 function ET:changeStates(to_state)
   self.state = ET.state[to_state]
   ET.state.alerted.enter(self)
 end
-
+--[[
 function ET:getRenderPosition()
-  local oy = self.Anim:getBaseImageOffset().y
+  --local oy = self.Anim:getBaseImageOffset().y
+  local oy = self.base_image_offset.y
   return math.floor(((self.pos.y + self.height) + oy) + 0.5)
 end
-  
+]]
 return ET

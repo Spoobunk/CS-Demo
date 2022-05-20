@@ -53,7 +53,7 @@ function AttackBasic:stage1()
   toward_target = toward_target:normalizeInplace()
   self.main_class.Move:setMovementSettings(toward_target, nil, 4, 0.09, 150) 
   --This stage should end when the enemy is lined up with the player as defined in the exit condition, but in the case that doesn't happen, this timer will end it the attack.
-  self.timer:after(5, function() self.nextStage() end)
+  self.timer:after(5, function() self:nextStage() end)
   -- skips this stage if the enemy is already roughly in line with the player
   if math.abs(target_distance) < 0.5 then self:nextStage() end
 end
@@ -73,12 +73,13 @@ function AttackBasic:stage3()
   self.hitbox = self.main_class:addCollider(hitbox, "Test", self.main_class, function() return self.main_class.pos.x + (30 * self.attack_direction), self.main_class.pos.y end) 
   self.main_class.Move:defaultMovementSettings() 
   self.main_class.Move:setMovementSettings(vector(self.attack_direction, 0), nil, 50, 0.3, 80)
-  -- saves where the player's y is currently so the player's height doesn't keep getting added to itself.
-  self.ground_level = self.main_class.pos.y
+
   local number_of_hops = 0
+  local hop_peak = 10
+  local hop_duration = 0.18
   local up, down
-  up = function() self.timer:tween(0.12, self.hop_height, {y = 10}, 'out-quart', function() number_of_hops = number_of_hops + 1 down() end) end
-  down = function() self.timer:tween(0.12, self.hop_height, {y = 0}, 'in-quart', function() if number_of_hops >= 3 then self:nextStage() else up() end end) end
+  up = function() self.timer:tween(hop_duration, self.hop_height, {y = hop_peak}, 'out-quart', function() hop_peak = hop_peak - 4 hop_duration = hop_duration - 0.04 down() end) end
+  down = function() self.timer:tween(hop_duration, self.hop_height, {y = 0}, 'in-quart', function() number_of_hops = number_of_hops + 1 if number_of_hops >= 3 then self:nextStage() else up() end end) end
   --down = function() self.timer:tween(0.12, self.hop_height, {y = 0}, 'in-quart', function() self:nextStage() end) end
   up()
   --self.attack_anim_speed = .1
@@ -88,7 +89,7 @@ end
 
 --slide afterwards
 function AttackBasic:stage4()
-  self:removeHitbox(self.hitbox)
+  self.main_class:removeCollider(self.hitbox)
   self.main_class.Move:setMovementSettings(nil, nil, 0, 0.3, nil)
   self.timer:after(0.8, function() self:nextStage() end)
   self.timer:tween(0.8, self.attack_anim_duration, {d = 0.1}, 'in-linear')
@@ -97,12 +98,7 @@ end
 function AttackBasic:exit()
   self.main_class:changeStates('alerted')
   self.main_class.current_attack = nil
-end
-
-function AttackBasic:removeHitbox()
-  for i,v in ipairs(self.main_class.colliders) do
-    if v == self.hitbox then self.main_class.collision_world:remove(self.hitbox) table.remove(self.main_class.colliders, i) end
-  end
+  self.main_class.height = 0
 end
 
 return AttackBasic

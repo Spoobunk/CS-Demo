@@ -98,9 +98,11 @@ function Player_Move:get_movement_step(dt, axis_x, axis_y)
 end
 
 function Player_Move:spin()
-  local anim = self.state_manager.player_components.anim
-  anim:Switch_Animation("anim_test")
+  --local anim = self.state_manager.player_components.anim
+  --anim:Switch_Animation("anim_test")
   self.state_manager:change_states('moving') 
+  local hitbox = self.state_manager.collision_world:circle(self.state_manager.position.x + 30, self.state_manager.position.y, 40)
+  self.state_manager:addCollider(hitbox, "Player_Attack", self.state_manager, function() return self.state_manager.position.x + 30, self.state_manager.position.y end)
 end
 
 -- @param dir what to set the player's direction to (a normalized vector)
