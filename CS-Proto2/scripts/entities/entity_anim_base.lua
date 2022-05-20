@@ -24,7 +24,7 @@ function EntityAnim:update(dt)
   self.current_anim:update(dt)
 end
 
-function EntityAnim:draw(x, y, direction)
+function EntityAnim:draw(x, y)
   local offsetX, offsetY = self:Get_Draw_Offset(self.current_anim:getDimensions())
   --local drawn_anim = self.horizontal_flip and self.current_anim else return self.current_anim:flipH() end end
   self.current_anim:flipH(self.horizontal_flip):draw(self.sheet, x, y, 0, 1, 1, offsetX, offsetY)
@@ -56,8 +56,10 @@ function EntityAnim:flipSpriteHorizontal(face_direction)
   --self.current_anim:flipH(face_direction)
 end
 
---function EntityAnim:changeSpeed(anim, speed)
-  --self.anims[anim] = anim8
+-- changes speed of the current animation, doesn't persist after the animation ends.
+function EntityAnim:changeSpeed(duration)
+  self.current_anim:newDurations(duration)
+end
 
 function EntityAnim:getCurrentAnim()
   return self.current_anim

@@ -192,6 +192,19 @@ local function newAnimation(frames, durations, onLoop)
   )
 end
 
+-- function I added so I can change the speed of an animation while it is running. could very possibly cause problems.
+function Animation:newDurations(new_durations) 
+  local td = type(new_durations);
+  if (td ~= 'number' or new_durations <= 0) and td ~= 'table' then
+    error("durations must be a positive number. Was " .. tostring(new_durations) )
+  end
+  new_durations = parseDurations(new_durations, #self.frames)
+  local intervals, totalDuration = parseIntervals(new_durations)
+  self.intervals = intervals
+  self.totalDuration = totalDuration
+  self.durations = new_durations
+end
+  
 function Animation:clone()
   local newAnim = newAnimation(self.frames, self.durations, self.onLoop)
   newAnim.flippedH, newAnim.flippedV = self.flippedH, self.flippedV
