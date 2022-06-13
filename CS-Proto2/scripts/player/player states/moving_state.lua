@@ -3,7 +3,7 @@ Base_State = require "scripts.player.player states.base_state"
 Moving_State = Base_State:extend()
 
 function Moving_State:enter_state()
-    print("moving")
+    --print("moving")
 end
 
 --Idle_State.input = Idle_State.super.input

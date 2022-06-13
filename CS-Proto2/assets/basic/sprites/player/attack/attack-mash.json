@@ -1,0 +1,110 @@
+{ "frames": [
+   {
+    "filename": "stuba-attack-sheet-mash 0.aseprite",
+    "frame": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 1.aseprite",
+    "frame": { "x": 175, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 2.aseprite",
+    "frame": { "x": 350, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 3.aseprite",
+    "frame": { "x": 525, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 4.aseprite",
+    "frame": { "x": 0, "y": 113, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 5.aseprite",
+    "frame": { "x": 175, "y": 113, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 6.aseprite",
+    "frame": { "x": 350, "y": 113, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 7.aseprite",
+    "frame": { "x": 525, "y": 113, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 8.aseprite",
+    "frame": { "x": 0, "y": 226, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 9.aseprite",
+    "frame": { "x": 175, "y": 226, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   },
+   {
+    "filename": "stuba-attack-sheet-mash 10.aseprite",
+    "frame": { "x": 350, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "sourceSize": { "w": 175, "h": 113 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.2.34.1-x64",
+  "image": "attack-mash.png",
+  "format": "RGBA8888",
+  "size": { "w": 700, "h": 339 },
+  "scale": "1"
+ }
+}

@@ -1,0 +1,43 @@
+{ "frames": {
+   "devout-idle.png": {
+    "frame": { "x": 0, "y": 150, "w": 94, "h": 77 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 94, "h": 77 },
+    "sourceSize": { "w": 94, "h": 77 },
+    "duration": 100
+   },
+   "devout-spin.png": {
+    "frame": { "x": 114, "y": 0, "w": 144, "h": 98 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 144, "h": 98 },
+    "sourceSize": { "w": 144, "h": 98 },
+    "duration": 100
+   },
+   "devout-step.png": {
+    "frame": { "x": 0, "y": 0, "w": 114, "h": 150 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 114, "h": 150 },
+    "sourceSize": { "w": 114, "h": 150 },
+    "duration": 100
+   },
+   "devout-wind up.png": {
+    "frame": { "x": 114, "y": 98, "w": 128, "h": 75 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 128, "h": 75 },
+    "sourceSize": { "w": 128, "h": 75 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.2.34.1-x64",
+  "image": "devout-sheet.png",
+  "format": "RGBA8888",
+  "size": { "w": 258, "h": 227 },
+  "scale": "1"
+ }
+}

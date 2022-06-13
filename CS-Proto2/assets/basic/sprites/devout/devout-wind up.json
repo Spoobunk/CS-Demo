@@ -1,0 +1,29 @@
+{ "frames": [
+   {
+    "filename": "devout-test-wind up 0.aseprite",
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 34, "y": 1, "w": 64, "h": 75 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   },
+   {
+    "filename": "devout-test-wind up 1.aseprite",
+    "frame": { "x": 64, "y": 0, "w": 64, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 34, "y": 1, "w": 64, "h": 75 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.2.34.1-x64",
+  "image": "devout-wind up.png",
+  "format": "RGBA8888",
+  "size": { "w": 128, "h": 75 },
+  "scale": "1"
+ }
+}

@@ -13,6 +13,7 @@ function AttackBasic:new(main_class)
   self.attack_anim_duration = {d = 0.1}
   self.hitbox = nil
   
+  -- this stuff you have to implement in each subclass
   self.current_stage = 1
   self.stages = {
     {enter = function() self:stage1() end, 
@@ -61,7 +62,7 @@ end
 -- wind up 
 function AttackBasic:stage2()
   self.timer:clear()
-  self.main_class.Move:setMovementSettings(nil, vector(30 * -self.attack_direction, 0), 0, 0.1, 80)
+  self.main_class.Move:setMovementSettings(nil, vector(110 * -self.attack_direction, 0), 0, 0.4, 300)
   self.main_class.Anim:switchAnimation('attack_windup')
   self.timer:after(0.5, function() self:nextStage() end)
 end
@@ -72,7 +73,7 @@ function AttackBasic:stage3()
   local hitbox = self.main_class.collision_world:circle(self.main_class.pos.x + (30 * self.attack_direction), self.main_class.pos.y, 20)
   self.hitbox = self.main_class:addCollider(hitbox, "Test", self.main_class, function() return self.main_class.pos.x + (30 * self.attack_direction), self.main_class.pos.y end) 
   self.main_class.Move:defaultMovementSettings() 
-  self.main_class.Move:setMovementSettings(vector(self.attack_direction, 0), nil, 50, 0.3, 80)
+  self.main_class.Move:setMovementSettings(vector(self.attack_direction, 0), nil, 50, 0.3, 140)
 
   local number_of_hops = 0
   local hop_peak = 10
@@ -96,6 +97,7 @@ function AttackBasic:stage4()
 end
   
 function AttackBasic:exit()
+  if self.hitbox then self.main_class:removeCollider(self.hitbox) end
   self.main_class:changeStates('alerted')
   self.main_class.current_attack = nil
   self.main_class.height = 0

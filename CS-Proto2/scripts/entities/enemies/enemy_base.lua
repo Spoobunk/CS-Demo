@@ -14,13 +14,14 @@ function EnemyBase:new(x, y, collision_world, tile_world)
 end
 
 function EnemyBase:update(dt)
-  local collisions = self.collision_world:collisions(self.colliders[1])
-  for other, separating_vector in pairs(collisions) do
-    if(not self.player and other.tag == "Player") then
-      self.player = other.object
-    end
-    if(self.collision_resolution[other.tag]) then
-      self.collision_resolution[other.tag]()
+  if(not self.player) then
+    for _,c in ipairs(self.colliders) do
+      local collisions = self.collision_world:collisions(c)
+      for other, separating_vector in pairs(collisions) do
+        if(other.tag == "Player" or other.tag == "PlayerAttack") then
+          self.player = other.object
+        end
+      end
     end
   end
   

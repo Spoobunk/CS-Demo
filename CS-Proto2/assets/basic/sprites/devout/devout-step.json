@@ -1,0 +1,47 @@
+{ "frames": [
+   {
+    "filename": "devout-test-step 0.aseprite",
+    "frame": { "x": 0, "y": 0, "w": 57, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 1, "y": 1, "w": 57, "h": 75 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   },
+   {
+    "filename": "devout-test-step 1.aseprite",
+    "frame": { "x": 57, "y": 0, "w": 57, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 1, "y": 1, "w": 57, "h": 75 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   },
+   {
+    "filename": "devout-test-step 2.aseprite",
+    "frame": { "x": 0, "y": 75, "w": 57, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 1, "y": 1, "w": 57, "h": 75 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   },
+   {
+    "filename": "devout-test-step 3.aseprite",
+    "frame": { "x": 57, "y": 75, "w": 57, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 1, "y": 1, "w": 57, "h": 75 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.2.34.1-x64",
+  "image": "devout-step.png",
+  "format": "RGBA8888",
+  "size": { "w": 114, "h": 150 },
+  "scale": "1"
+ }
+}

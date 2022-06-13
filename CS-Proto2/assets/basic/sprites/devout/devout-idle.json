@@ -1,0 +1,29 @@
+{ "frames": [
+   {
+    "filename": "devout-test-idle 0.aseprite",
+    "frame": { "x": 0, "y": 0, "w": 47, "h": 77 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 1, "y": 1, "w": 47, "h": 77 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   },
+   {
+    "filename": "devout-test-idle 1.aseprite",
+    "frame": { "x": 47, "y": 0, "w": 47, "h": 77 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 1, "y": 1, "w": 47, "h": 77 },
+    "sourceSize": { "w": 102, "h": 90 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.2.34.1-x64",
+  "image": "devout-idle.png",
+  "format": "RGBA8888",
+  "size": { "w": 94, "h": 77 },
+  "scale": "1"
+ }
+}

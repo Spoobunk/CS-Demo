@@ -8,29 +8,11 @@ Player_Move = Object:extend()
 
 --good settings: acc = 200, friction = 0.9, maxvel = 600
 function Player_Move:new(state_manager)
-  --[[
-  player_sheet = love.graphics.newImage('Sprites/Stuba/player_run.png')
-  local g = anim8.newGrid(34, 50, player_sheet:getWidth(), player_sheet:getHeight(), 0, 0, 1)
-  walk_down = anim8.newAnimation(g('1-4', 1), .1)
-  walk_downright = anim8.newAnimation(g('5-6', 1, '1-2', 2), .1)
-  walk_right = anim8.newAnimation(g('3-6', 2), .1)
-  walk_upright = anim8.newAnimation(g('1-4', 3), .1)
-  walk_up = anim8.newAnimation(g('5-6', 3, '1-2', 4), .1)
-  walk_upleft = anim8.newAnimation(g('3-6', 4), .1)
-  walk_left = anim8.newAnimation(g('1-4', 5), .1)
-  walk_downleft = anim8.newAnimation(g('5-6', 5, '1-2', 6), .1)
-  current_anim = walk_down
-  idle_down = anim8.newAnimation(g(1, 1), .1)
-  idle_animation = idle_down
-  walk_anim_matrix = {
-      {walk_upleft, walk_up, walk_upright},
-      {walk_left, idle_animation, walk_right},
-      {walk_downleft, walk_down, walk_downright}
-    }]]
-    
   self.state_manager = state_manager
-  --print(state_manager.current_state.canMove)
+
   self.direction = vector(0,0)
+  -- source of truth for the direction the player is facing, 1 for right, -1 for left
+  self.face_direction = 1
   self.velocity = vector(0,0)
   -- constants that represent Stooba's normal movement, when runnin' around
   self.RUN_ACC = 200
@@ -51,8 +33,6 @@ function Player_Move:update(dt)
 end
 
 function Player_Move:get_movement_step(dt, axis_x, axis_y)
-    
-  --local direction = vector(0, 0)
  
   -- for states where the player can't control movement
   if(self.state_manager.current_state.canMove and self.accepting_movement_input) then
@@ -69,12 +49,15 @@ function Player_Move:get_movement_step(dt, axis_x, axis_y)
     else
       anim:Switch_Animation(anim.walk_anim_matrix[2+input_y][2+input_x])
       anim.idle_anim = anim.idle_anim_matrix[2+input_y][2+input_x]
+      if not(input_x == 0) then
+        -- update the sprite's horizontal scale based on the direction the player is moving.
+        self.state_manager.player_components.anim:flipSpriteHorizontal(input_x)  
+        self.face_direction = input_x
+      end
     end
   end
   
-  --no need to normalize, the input values are already normalized by the input library
-  --delta:normalizeInplace()
-  
+
   --move withouth acceleration
   --self.velocity = self.velocity + delta * self.max_velocity
   
@@ -98,11 +81,11 @@ function Player_Move:get_movement_step(dt, axis_x, axis_y)
 end
 
 function Player_Move:spin()
-  --local anim = self.state_manager.player_components.anim
-  --anim:Switch_Animation("anim_test")
+  local anim = self.state_manager.player_components.anim
+  anim:Switch_Animation("mash3")
   self.state_manager:change_states('moving') 
-  local hitbox = self.state_manager.collision_world:circle(self.state_manager.position.x + 30, self.state_manager.position.y, 40)
-  self.state_manager:addCollider(hitbox, "Player_Attack", self.state_manager, function() return self.state_manager.position.x + 30, self.state_manager.position.y end)
+  --local hitbox = self.state_manager.collision_world:circle(self.state_manager.position.x + 30, self.state_manager.position.y, 40)
+  --self.state_manager:addCollider(hitbox, "Player_Attack", self.state_manager, function() return self.state_manager.position.x + 30, self.state_manager.position.y end)
 end
 
 -- @param dir what to set the player's direction to (a normalized vector)
@@ -116,6 +99,12 @@ function Player_Move:Set_Movement_Settings(dir, vel, acc, fric, max_vel)
   self.acceleration = acc or self.acceleration
   self.friction = fric or self.friction
   self.max_velocity = max_vel or self.max_velocity
+end
+
+function Player_Move:defaultMovementSettings()
+  self.acceleration = self.RUN_ACC
+  self.friction = self.RUN_FRIC
+  self.max_velocity = self.RUN_MAX_VEL
 end
 
 -- @param can whether the player is accepting movement input or not (a boolean)

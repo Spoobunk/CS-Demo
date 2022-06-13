@@ -1,0 +1,75 @@
+{ "frames": {
+   "stuba attack export #Loop 0.aseprite": {
+    "frame": { "x": 0, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   },
+   "stuba attack export #Loop 1.aseprite": {
+    "frame": { "x": 175, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   },
+   "stuba attack export #Loop 2.aseprite": {
+    "frame": { "x": 350, "y": 0, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   },
+   "stuba attack export #Loop 3.aseprite": {
+    "frame": { "x": 0, "y": 113, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   },
+   "stuba attack export #Loop 4.aseprite": {
+    "frame": { "x": 175, "y": 113, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   },
+   "stuba attack export #Loop 5.aseprite": {
+    "frame": { "x": 350, "y": 113, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   },
+   "stuba attack export #Loop 6.aseprite": {
+    "frame": { "x": 0, "y": 226, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   },
+   "stuba attack export #Loop 7.aseprite": {
+    "frame": { "x": 175, "y": 226, "w": 175, "h": 113 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 11, "y": 53, "w": 175, "h": 113 },
+    "sourceSize": { "w": 190, "h": 200 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.2.34.1-x64",
+  "image": "stuba_attack.png",
+  "format": "RGBA8888",
+  "size": { "w": 525, "h": 339 },
+  "scale": "1"
+ }
+}

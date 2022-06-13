@@ -74,7 +74,7 @@ function Entity:resolveCollisions()
       local collisions = self.collision_world:collisions(c)
       for other, separating_vector in pairs(collisions) do
         if(self.collision_resolution[c.tag][other.tag]) then
-          self.collision_resolution[c.tag][other.tag](separating_vector)
+          self.collision_resolution[c.tag][other.tag](separating_vector, other)
         end
       end
     end
@@ -91,6 +91,12 @@ function Entity:drawTileCollider()
   love.graphics.setColor(0.54,0.81,0.94)
   local tcx, tcy, tcw, tch = self.tile_world:getRect(self)
   love.graphics.rectangle("line", tcx, tcy, tcw, tch)
+  love.graphics.setColor(1, 1, 1, 1) 
+end
+
+function Entity:drawRenderPosition()
+  love.graphics.setColor(0.91,0.45,0.31)
+  love.graphics.line(self.pos.x - 30, self:getRenderPosition(), self.pos.x + 30, self:getRenderPosition())
   love.graphics.setColor(1, 1, 1, 1) 
 end
 
