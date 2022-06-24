@@ -107,6 +107,10 @@ function Player_Move:defaultMovementSettings()
   self.max_velocity = self.RUN_MAX_VEL
 end
 
+function Player_Move:getVelocity()
+  return self.velocity
+end
+
 -- @param can whether the player is accepting movement input or not (a boolean)
 function Player_Move:Set_Movement_Input(can)
   self.accepting_movement_input = can

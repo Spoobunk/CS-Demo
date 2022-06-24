@@ -13,6 +13,7 @@ end
 
 function Entity_Manager.updateEntities(dt)
   for _, e in ipairs(Entity_Manager.entities) do
+    --if e:is(Player) then e:update(dt, movex, movey) end
     if not e:is(Scenery) and not e:is(Player) then e:update(dt) end
   end
 end

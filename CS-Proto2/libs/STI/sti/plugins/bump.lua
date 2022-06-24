@@ -36,8 +36,8 @@ return {
 										width      = object.width,
 										height     = object.height,
 										layer      = instance.layer,
-										properties = object.properties
-
+										properties = object.properties,
+                    isTile = true
 									}
 
 									world:add(t, t.x, t.y, t.width, t.height)
@@ -55,7 +55,8 @@ return {
 								height     = map.tileheight,
 								layer      = instance.layer,
 								type       = tile.type,
-								properties = tile.properties
+								properties = tile.properties,
+                isTile = true
 							}
 
 							world:add(t, t.x, t.y, t.width, t.height)
@@ -84,7 +85,8 @@ return {
 											width      = object.width,
 											height     = object.height,
 											layer      = layer,
-											properties = object.properties
+											properties = object.properties,
+                      isTile = true
 										}
 
 										world:add(t, t.x, t.y, t.width, t.height)
@@ -101,7 +103,8 @@ return {
 								height     = tile.height,
 								layer      = layer,
 								type       = tile.type,
-								properties = tile.properties
+								properties = tile.properties,
+                isTile = true
 							}
 
 							world:add(t, t.x, t.y, t.width, t.height)
@@ -128,7 +131,8 @@ return {
 								width      = obj.width,
 								height     = obj.height,
 								layer      = layer,
-								properties = obj.properties
+								properties = obj.properties,
+                isTile = true
 							}
 
 							if obj.gid then

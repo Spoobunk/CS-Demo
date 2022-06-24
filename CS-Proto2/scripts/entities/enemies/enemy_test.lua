@@ -12,6 +12,7 @@ Enemy = require "scripts.entities.enemies.enemy_base"
 ET = Enemy:extend()
 ET.state = {
   idle = {
+    name = 'idle',
     enter = function(self) 
       self.Anim:switchAnimation('idle')
       self.facing_player = false
@@ -21,6 +22,7 @@ ET.state = {
     vulnerable = true
   },
   alerted = {
+    name = 'alerted',
     enter = function(self) 
       self.Anim:switchAnimation('walk')
       self.facing_player = true
@@ -38,6 +40,7 @@ ET.state = {
     vulnerable = true
   },
   attacking = {
+    name = 'attacking',
     enter = function(self) 
       
     end,
@@ -47,9 +50,9 @@ ET.state = {
     vulnerable = true
   },
   hitstun = {
+    hitstun = 'hitstun',
     enter = function(self) 
       self.Anim:switchAnimation('idle')
-      self.following_player = true
       self.Anim:flipSpriteHorizontal(self.player_is_to)
     end,
     vulnerable = false
@@ -89,8 +92,8 @@ function ET:new(x, y, collision_world, tile_world)
   self.Move = MoveComponent(4, 0.09, 150)
   self.Health = HealthComponent(24, self, self.Anim, self.Move)
   
-  self:addCollider(self.collision_world:circle(self.pos.x, self.pos.y, 20), "Enemy", self, function() return self.pos:unpack() end) 
-  self.alert_trigger_area = self:addCollider(self.collision_world:circle(self.pos.x, self.pos.y, 200), "EnemyTrigger", self, function() return self.pos:unpack() end) 
+  self.hitbox = self:addCollider(self.collision_world:circle(self.pos.x, self.pos.y, 20), "Enemy", self, function() return self.ground_pos:unpack() end) 
+  self.alert_trigger_area = self:addCollider(self.collision_world:circle(self.pos.x, self.pos.y, 200), "AlertTrigger", self, function() return self.ground_pos:unpack() end) 
   
   -- this is set when the enemy is alerted to the player
   self.attack_trigger_area = nil
@@ -98,12 +101,12 @@ function ET:new(x, y, collision_world, tile_world)
   -- How this works: the collision resolution table specifies how to resolve collisions between colliders with certain tags. When a collider attached to this object collides with something, it goes here to look for how to resolve it, using the tag of the collided object.
   self.collision_resolution = {
     Enemy = {Player = function(seperating_vector) local knockback_dir = vector(seperating_vector.x, seperating_vector.y):normalizeInplace() self.Move:setMovementSettings(nil, knockback_dir * 120, nil, nil, nil) end,
-              --Attack_Trigger = function() self:getInAttackPosition() end,
               PlayerAttack = function(separating_vector, other) self:abortAttack() self.Health:takeDamage(vector(separating_vector.x, separating_vector.y), other) end,
-              Testy = function(separating) normal = vector(separating.x, separating.y) self.Move:setMovementSettings(normal / 2) end},
-    EnemyTrigger = {Player = function() if (self.state == ET.state.idle) then self:alertedToPlayer() else self:getInAttackPosition() end end},
-    AttackTrigger = {Player = function() self:getInAttackPosition() end},
-  }
+              Test = function(separating_vector) self:moveTo(self.ground_pos + vector(separating_vector.x, separating_vector.y)) end,
+              Enemy = function(separating_vector, other) self:enemyOnEnemyCollision(separating_vector, other) end},
+    AlertTrigger = {Player = function() if (self.state == ET.state.idle) then self:alertedToPlayer() end end},
+    AttackTrigger = {Player = function() if (self.state == ET.state.alerted) then self:getInAttackPosition() end end},
+  } 
   
   self.following_player = false
   self.facing_player = true
@@ -112,10 +115,11 @@ function ET:new(x, y, collision_world, tile_world)
 end
 
 function ET:update(dt)
-  
   self.Anim:update(dt)
   self.Move:update(dt)
   self.Health:update(dt)
+  --if self.player then self.Move:setMovementSettings(vector(0, 0), self.player.player_components.move:getVelocity(), 0, 0, 100000000) end
+  
   if(self.current_attack) then
     self.current_attack:update(dt)
   end
@@ -127,6 +131,7 @@ function ET:update(dt)
   if(self.player and self.facing_player) then
     self.Anim:flipSpriteHorizontal(self.player_is_to)
   end
+  
   
   -- the update function of the superclasses has to come after updating the attack, otherwise the height variable will be all off.
   ET.super.update(self, dt)
@@ -140,9 +145,9 @@ function ET:draw()
   --love.graphics.rectangle('line', self.pos.x, self.pos.y, self.Anim:getCurrentAnim():getDimensions())
   love.graphics.points(self.pos:unpack())
 
-  self:drawColliders()
-  self:drawTileCollider()
-  self:drawRenderPosition()
+  --self:drawColliders()
+  --self:drawTileCollider()
+  --self:drawRenderPosition()
   love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -151,8 +156,8 @@ function ET:alertedToPlayer()
     self.state = ET.state.alerted
     self.Anim:switchAnimation('walk')
     self:removeCollider(self.alert_trigger_area)
-    local attack_trigger_area = self.collision_world:circle(self.pos.x, self.pos.y, 100)
-    self:addCollider(attack_trigger_area, "AttackTrigger", self, function() return self.pos:unpack() end)
+    local attack_trigger_area = self.collision_world:circle(self.pos.x, self.pos.y, 200)
+    self:addCollider(attack_trigger_area, "AttackTrigger", self, function() return self.ground_pos:unpack() end)
     self.following_player = true
   end
 end
@@ -172,9 +177,13 @@ end
 
 function ET:changeStates(to_state)
   -- calls the exit method on the last state if one is provided
-  if self.state.exit then self.state.exit(selfz) end
+  if self.state.exit then self.state.exit(self) end
   self.state = ET.state[to_state]
   self.state.enter(self)
+end
+
+function ET:currentStateIs(is_state)
+  return self.state == ET.state[is_state] 
 end
 
 return ET

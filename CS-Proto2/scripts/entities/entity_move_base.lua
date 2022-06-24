@@ -31,6 +31,8 @@ function EntityMove:getMovementStep(dt)
   self.velocity = self.velocity * (1 - self.friction) ^ (dt * 10)
   
   return self.velocity * dt
+  --self.velocity = self.velocity 
+  --return vector(math.floor(self.velocity.x + 0.5), math.floor(self.velocity.y + 0.5)) * dt
 end
 
 -- higher fric = slower movement

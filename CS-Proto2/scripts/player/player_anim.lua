@@ -63,11 +63,11 @@ function Player_Anim:new()
       center_position = 73,
       do_flip = true,
       --attack = anim8.newAnimation(attack_grid('1-3', 1, '1-3', 2, '1-2', 3), .5)
-      mash1 = anim8.newAnimation(attack_grid('1-3', 1), {.04, .08, .08}, 'pauseAtEnd'),
+      mash1 = anim8.newAnimation(attack_grid('1-3', 1), {.02, .06, .08}, 'pauseAtEnd'),
       mashready2 = anim8.newAnimation(attack_grid(4, 1), 1, 'pauseAtEnd'),
-      mash2 = anim8.newAnimation(attack_grid('1-3', 2), {.04, .08, .08}, 'pauseAtEnd'),
+      mash2 = anim8.newAnimation(attack_grid('1-3', 2), {.02, .06, .08}, 'pauseAtEnd'),
       mashready3 = anim8.newAnimation(attack_grid(4, 2), 1, 'pauseAtEnd'),
-      mash3 = anim8.newAnimation(attack_grid('1-2', 3, 3, 1), {.04, .08, .08}, 'pauseAtEnd')
+      mash3 = anim8.newAnimation(attack_grid('1-2', 3, 3, 1), {.02, .06, .08}, 'pauseAtEnd')
     },
     {
       sheet = big_test,
@@ -96,13 +96,13 @@ end
 
 function Player_Anim:Get_Draw_Offset(frameWidth, frameHeight)
   -- either calculations work, just testing to see if it would smooth the movement when the camera is zoomed, seems no difference
-  local offsetY = math.ceil(self.current_ground_level  - self.image_offset.y)
+  local offsetY = self.current_ground_level  - self.image_offset.y
   --local offsetX = math.ceil(frameWidth/2) - 1
   local offsetX = 0
   if self.horizontal_flip then
-    offsetX = math.ceil(frameWidth - self.current_center_position)
+    offsetX = frameWidth - self.current_center_position
   else
-    offsetX = math.ceil(self.current_center_position)
+    offsetX = self.current_center_position
   end
   --local offsetY = math.floor((self.current_ground_level  - self.image_offset.y) + 0.5)
   --local offsetX = math.floor((frameWidth/2) + 0.5)

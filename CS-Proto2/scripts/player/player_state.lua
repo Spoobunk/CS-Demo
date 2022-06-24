@@ -34,27 +34,36 @@ function Player:new(x, y, collision_world, tile_world)
   local anim_component = Anim(self)
   local attack_component = Attack(self)
   self.player_components = {move = move_component, anim = anim_component, attack = attack_component}
+  self.Move = move_component
+  self.Anim = anim_component
   
   --self.img = love.graphics.newImage("assets/basic/sprites/player/stuba test.png")
   self.position = vector(x, y) or vector(0, 0)
   self.ground_pos = self.position
+  self.current_movestep = vector(0, 0)
   self.base_image_offset = vector(30 / 2, 52 / 2)
   -- 31 by 51: dimensions for stooba's standing sprite sheet, to establish where their feet lie
   -- i.e.: stuba's idle, standing animation is drawn (31/2) pixels left and (51/2) above their actual position, so it is centered.
   
   self.collision_world = collision_world
-  self.collider = self.collision_world:circle(self.position.x, self.position.y, 50)
+  self.collider = self.collision_world:circle(self.position.x, self.position.y, 20)
   self.test_guy = self.collision_world:rectangle(400, 400, 100, 100)
   self.test_guy2 = self.collision_world:circle(100, 300, 100)
   self:addCollider(self.collider, "Player", self, function() return self.position:unpack() end)
-  self:addCollider(self.test_guy, "Test", self, function() return 400, 400 end)
+  self:addCollider(self.test_guy, "Test", self, function() return 400, 0 end)
   self:addCollider(self.test_guy2, "Test", self, function() return 100, 300 end)
 
   self.setUpTileCollider(self, self.position.x, self.position.y, 12, -1, 25, 24)
   
   self.collision_resolution = {
     Player = {Test = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y)) end,
-              Enemy = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y)) end}
+              --[[{Test = function(separating_vector) if not self.cool then print(separating_vector.y) print(self.position) 
+                  local this_x = self.position.x
+                  local this_y = self.position.y
+                  self:addCollider(self.collision_world:circle(self.position.x, self.position.y, 20), "noddu", self, function() return this_x, this_y end)
+                  self:moveTo(self.position + vector(separating_vector.x, separating_vector.y)) print(self.position) self.cool = true self.player_components.move:Set_Movement_Input(false) self.player_components.move:Set_Movement_Settings(vector(0, 0), vector(0,0), 0, 0, 0) end end,]]
+              --{Test = function(separating_vector) self:moveTo(self.position + vector(separating_vector.x, separating_vector.y)) end,
+              Enemy = function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y)) end end}
   }
 end
 
@@ -101,29 +110,38 @@ function Player:draw()
   --self:drawTileCollider()
   love.graphics.setColor(255, 0, 0, 1)
   -- drawing absolute position
-  --love.graphics.points(self.position.x, self.position.y)
+  love.graphics.points(self.position.x, self.position.y)
   love.graphics.setColor(0, 0, 255, 1)
 
   self:drawColliders()
   love.graphics.setColor(255, 255, 255, 1)
 end
 
-function Player:update(dt, move_input_x, move_input_y)
-  
+function Player:update(dt, move_input_x, move_input_y)  
   for _, component in pairs(self.player_components) do
     component:update(dt)
   end
   
+  local last_pos = self.ground_pos
+  
   --player's custom version of the movement segment of Entity.update()
   local move_step = self.player_components.move:get_movement_step(dt, move_input_x, move_input_y)
   local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
-  local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function() return self:checkTileCollisionForHeight() end)
+  local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
+  
   self.ground_pos = vector(actualX, actualY) + self.tile_collider_offset
+  -- this line simply sets the horizontal velocity of the player to 0 whent running into a wall, so when hitting an enemy it doesn't copy the players velocity when running into a wall
+  if actualX - goal_pos.x ~= 0 then self.player_components.move.velocity.x = 0 end
   self.position = self.ground_pos - vector(0, self.height)
-
+  self.pos = self.position
+  -- rounding position values makes you get stuck on colliders :/
+  --self.position = vector(math.floor(self.position.x), math.floor(self.position.y))
+  
   self:updateColliderPositions()
   self:resolveCollisions()
-  self.pos = self.position
+  self:updateColliderPositions()
+  
+  self.current_movestep = self.ground_pos - last_pos
 end
 
 function Player:getRenderPosition()
@@ -133,4 +151,4 @@ end
 
 return Player 
   
-  
+   

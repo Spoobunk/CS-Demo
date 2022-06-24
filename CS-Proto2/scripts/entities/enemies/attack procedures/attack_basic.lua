@@ -11,6 +11,7 @@ function AttackBasic:new(main_class)
   self.attack_direction = nil
   self.hop_height = {y = 0}
   self.attack_anim_duration = {d = 0.1}
+  
   self.hitbox = nil
   
   -- this stuff you have to implement in each subclass
@@ -54,7 +55,7 @@ function AttackBasic:stage1()
   toward_target = toward_target:normalizeInplace()
   self.main_class.Move:setMovementSettings(toward_target, nil, 4, 0.09, 150) 
   --This stage should end when the enemy is lined up with the player as defined in the exit condition, but in the case that doesn't happen, this timer will end it the attack.
-  self.timer:after(5, function() self:nextStage() end)
+  self.timer:after(3, function() self:nextStage() end)
   -- skips this stage if the enemy is already roughly in line with the player
   if math.abs(target_distance) < 0.5 then self:nextStage() end
 end
@@ -71,7 +72,7 @@ end
 function AttackBasic:stage3()
   self.main_class.Anim:switchAnimation('attack') 
   local hitbox = self.main_class.collision_world:circle(self.main_class.pos.x + (30 * self.attack_direction), self.main_class.pos.y, 20)
-  self.hitbox = self.main_class:addCollider(hitbox, "Test", self.main_class, function() return self.main_class.pos.x + (30 * self.attack_direction), self.main_class.pos.y end) 
+  self.hitbox = self.main_class:addCollider(hitbox, "EnemyAttack", self.main_class, function() return self.main_class.pos.x + (30 * self.attack_direction), self.main_class.pos.y end) 
   self.main_class.Move:defaultMovementSettings() 
   self.main_class.Move:setMovementSettings(vector(self.attack_direction, 0), nil, 50, 0.3, 140)
 

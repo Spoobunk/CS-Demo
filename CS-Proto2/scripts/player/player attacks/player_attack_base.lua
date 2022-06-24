@@ -1,5 +1,6 @@
 Object = require "libs.classic.classic"
 Timer = require "libs.hump.timer"
+Signal = require "libs.hump.signal"
 
 AttackBase = Object:extend()
 
@@ -7,6 +8,7 @@ function AttackBase:new()
   self.stages = {}
   self.current_stage = 1
   self.timer = Timer.new()
+  self.signal = Signal.new()
 end
 
 function AttackBase:nextStage()

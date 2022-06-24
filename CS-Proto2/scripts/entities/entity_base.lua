@@ -21,29 +21,53 @@ function Entity:new(x, y, collision_world, tile_world)
 end
 
 function Entity:update(dt)
+  self:updateMovement(dt, self.Move:getMovementStep(dt))
+end
+
+function Entity:updateMovement(dt, movementStep)
+  --local last_pos = self.ground_pos
+  local target_pos = self.ground_pos + movementStep
+  
   -- moving taking the tile collider into account
   if(self.Move and self.tile_collider) then
-    local move_step = self.Move:getMovementStep(dt)
+    local move_step = movementStep
     local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
-    local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function() return self:checkTileCollisionForHeight() end)
+    local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
     self.ground_pos = vector(actualX, actualY) + self.tile_collider_offset
+    -- updates the variable that indicates whether an entity is running into a wall horizontally or not
+    --if actualX - goal_pos.x ~= 0 then self.moving_into_wall_x = true else self.moving_into_wall_x = false end 
     self.pos = self.ground_pos - vector(0, self.height)
+    -- rounding position values makes you get stuck on colliders :/
+    --self.pos = vector(math.floor(self.pos.x), math.floor(self.pos.y))
   -- moving without a tile collider
   elseif(self.Move) then
-    self.ground_pos = self.ground_pos + self.Move:getMovementStep(dt)
+    self.ground_pos = self.ground_pos + movementStep
     self.pos = self.ground_pos - vector(0, self.height)
   end
   
   self:updateColliderPositions()
   self:resolveCollisions()
+  self:updateColliderPositions()
+  
+  --if self.ground_pos.x ~= target_pos.x then self.moving_into_wall_x = true else self.moving_into_wall_x = false end 
+  --print(self.moving_into_wall_x)
 end
 
+-- @param new_pos: a vector representing the new position of the entity
+function Entity:moveTo(new_pos)
+  self.ground_pos = new_pos
+  self.pos = self.ground_pos - vector(0, self.height)
+  self.position = self.pos
+end 
+  
 function Entity:setUpTileCollider(x, y, ox, oy, w, h)
   self.tile_collider = self.tile_world:add(self, x - ox, y - oy, w, h) 
   self.tile_collider_offset = vector(ox, oy)
 end
 
-function Entity:checkTileCollisionForHeight()
+function Entity:checkTileCollisionForHeight(item, other)
+  if(not other.isTile and (self:is(Enemy) and other:is(Enemy))) then return false end
+  
   -- allows entities to skip over tiles if they are above a certain height
   if(self.height > 50) then
     return false
@@ -52,11 +76,15 @@ function Entity:checkTileCollisionForHeight()
   end
 end
 
+-- @param collider: collider object to add
+-- @param tag: string that identifies what the collider represents; collisions are resolved based on this
+-- @param position_function: function that returns a vector, to decide where the position of the collider is
+-- @param (optional) enabled: boolean: collisions are resolved only if this is true. it is true by default.
 function Entity:addCollider(collider, tag, object, position_function, enabled)
   collider.tag = tag
   collider.object = object
   collider.position_function = position_function 
-  collider.enabled = enabled or false
+  collider.enabled = enabled or true
   table.insert(self.colliders, collider)
   return collider
 end
@@ -70,16 +98,35 @@ end
 -- this birds gotta big nest (lol!)
 function Entity:resolveCollisions()
   for _,c in ipairs(self.colliders) do
-    if self.collision_resolution[c.tag] then
+    if self.collision_resolution[c.tag] and c.enabled then
       local collisions = self.collision_world:collisions(c)
       for other, separating_vector in pairs(collisions) do
-        if(self.collision_resolution[c.tag][other.tag]) then
+        if(self.collision_resolution[c.tag][other.tag] and other.enabled) then
           self.collision_resolution[c.tag][other.tag](separating_vector, other)
         end
       end
     end
   end
 end
+
+-- method that check for collision with scenery objects with an entity collider
+function Entity:checkEntityCollision(collider, test_pos)
+  collider:moveTo(test_pos.x, test_pos.y)
+  local collisions = self.collision_world:collisions(collider)
+  for other, separating_vector in pairs(collisions) do
+    if other.tag == "Test" then collider:moveTo(collider.position_function()) return true end
+  end
+  collider:moveTo(collider.position_function())
+  return false
+end
+
+-- method that checks for collision with the tile colliders belonging to the tile map
+function Entity:checkTileCollision(test_pos)
+  local goal_pos = test_pos - self.tile_collider_offset
+  local actualX, actualY, cols, len = self.tile_world:check(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
+  return actualX ~= goal_pos.x or actualY ~= goal_pos.y
+end
+  
 
 function Entity:drawColliders()
   for _,c in ipairs(self.colliders) do

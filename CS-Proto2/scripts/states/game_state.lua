@@ -77,10 +77,27 @@ function game_state:enter()
   
   
   local e_boy = e_test(50, 50)
-  local e_guy = et(400, 0, entity_collision, tile_world)
+  e_guy = et(0, 0, entity_collision, tile_world)
+  e_gut = et(0, 300, entity_collision, tile_world)
+  e_gur = et(0, 300, entity_collision, tile_world)
+  e_gue = et(0, 300, entity_collision, tile_world)
+  e_guw = et(0, 300, entity_collision, tile_world)
+  e_guq = et(0, 300, entity_collision, tile_world)
+  e_guz = et(0, 300, entity_collision, tile_world)
+  e_gux = et(0, 300, entity_collision, tile_world)
+  e_guc = et(0, 300, entity_collision, tile_world)
   entity_manager:addEntity(e_boy)
-  entity_manager:addEntity(p)
   entity_manager:addEntity(e_guy)
+  entity_manager:addEntity(e_gut)
+  entity_manager:addEntity(e_gur)
+  entity_manager:addEntity(e_gue)
+  entity_manager:addEntity(e_guw)
+  entity_manager:addEntity(e_guq)
+  entity_manager:addEntity(e_guz)
+  entity_manager:addEntity(e_gux)
+  entity_manager:addEntity(e_guc)
+  entity_manager:addEntity(p)
+
 
   entity_layer.draw = function(self) entity_manager.drawEntities() end
 end
@@ -92,8 +109,6 @@ end
 function game_state:update(dt)
   input:update()
   test_timer:update(dt)
-  entity_manager.updateEntities(dt)
-  entity_manager:updateRenderOrder()
   
   if input:pressed('attack') then
     p:input_button('attack')
@@ -116,12 +131,13 @@ function game_state:update(dt)
   
   movex, movey = input:get('move')
   p:update(dt, movex, movey)
+  entity_manager.updateEntities(dt)
+  entity_manager:updateRenderOrder()
+  
   local dx,dy = p.position.x - camera.x, p.position.y - camera.y
   camera:move(dx, dy)
   camera:zoomTo(scaling_factor.s)
 
-  ---for _,e in ipairs(entities) do e:update(dt) end
-  
   map:update(dt)
   gscreen.update(dt)
 end
