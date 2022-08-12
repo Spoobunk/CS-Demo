@@ -5,6 +5,8 @@ function love.conf(t)
   t.window.resizable = false -- Controled though allow_window_resize, set false in conf.
   t.window.minwidth = 640 -- Should match Width
   t.window.minheight = 360 -- Should match Height
+  t.window.fullscreentype = 'desktop'
+  t.window.usedpiscale = false
 
   t.modules.physics = false
 end

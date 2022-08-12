@@ -2,10 +2,13 @@ Object = require "libs.classic.classic"
 vector = require "libs.hump.vector"
 S = require "libs.strike"
 anim8 = require 'libs.anim8.anim8'
+Timer = require "libs.hump.timer"
 
 Move = require "scripts.player.player_move"
 Anim = require "scripts.player.player_anim"
 Attack = require "scripts.player.player_attack"
+Health = require "scripts.player.player_health"
+Grab = require "scripts.player.player_grab"
 
 Entity = require "scripts.entities.entity_base"
 
@@ -17,7 +20,13 @@ local path_to_states = "scripts.player.player states."
 Player.player_states = {
     idle = require (path_to_states .. "idle_state"),
     moving = require (path_to_states .. "moving_state"),
-    attacking = require (path_to_states .. "attack_state")
+    attacking = require (path_to_states .. "attack_state"),
+    hitstun = require (path_to_states .. "hitstun_state"),
+    spinning = require (path_to_states .. "spinning_state"),
+    holding = require (path_to_states .. "holding_state"), 
+    grabbing = require (path_to_states .. "grabbing_state"),
+    throwing = require (path_to_states .. "throwing_state"),
+    dormant = require (path_to_states .. "dormant_state")
 }
 
 -- fills in the list with the actual state classes
@@ -33,7 +42,9 @@ function Player:new(x, y, collision_world, tile_world)
   local move_component = Move(self)
   local anim_component = Anim(self)
   local attack_component = Attack(self)
-  self.player_components = {move = move_component, anim = anim_component, attack = attack_component}
+  local health_component = Health(self)
+  local grab_component = Grab(self)
+  self.player_components = {move = move_component, anim = anim_component, attack = attack_component, health = health_component, grab = grab_component}
   self.Move = move_component
   self.Anim = anim_component
   
@@ -45,25 +56,40 @@ function Player:new(x, y, collision_world, tile_world)
   -- 31 by 51: dimensions for stooba's standing sprite sheet, to establish where their feet lie
   -- i.e.: stuba's idle, standing animation is drawn (31/2) pixels left and (51/2) above their actual position, so it is centered.
   
+  -- a timer that won't ever be cleared
+  self.protected_timer = Timer.new()
+  self.buffered_input = nil
+  self.is_buffering_input = {attack = false, grab = false, spin = false}
+  -- keeps track of what inputs are being held down
+  self.is_holding_input = {attack = false, grab = false, spin = false}
+  
+  self.cancel_timers = {}
+  
   self.collision_world = collision_world
   self.collider = self.collision_world:circle(self.position.x, self.position.y, 20)
   self.test_guy = self.collision_world:rectangle(400, 400, 100, 100)
   self.test_guy2 = self.collision_world:circle(100, 300, 100)
-  self:addCollider(self.collider, "Player", self, function() return self.position:unpack() end)
-  self:addCollider(self.test_guy, "Test", self, function() return 400, 0 end)
+  self:addCollider(self.collider, "Player", self, function() return self.ground_pos:unpack() end)
+  self:addCollider(self.test_guy, "Reflect", self, function() return 400, 0 end)
   self:addCollider(self.test_guy2, "Test", self, function() return 100, 300 end)
 
   self.setUpTileCollider(self, self.position.x, self.position.y, 12, -1, 25, 24)
   
   self.collision_resolution = {
-    Player = {Test = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y)) end,
+    Player = {--Test = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y)) end,
+              Test = function(separating_vector) self:moveTo(self.ground_pos + vector(separating_vector.x, separating_vector.y)) end,
               --[[{Test = function(separating_vector) if not self.cool then print(separating_vector.y) print(self.position) 
                   local this_x = self.position.x
                   local this_y = self.position.y
                   self:addCollider(self.collision_world:circle(self.position.x, self.position.y, 20), "noddu", self, function() return this_x, this_y end)
                   self:moveTo(self.position + vector(separating_vector.x, separating_vector.y)) print(self.position) self.cool = true self.player_components.move:Set_Movement_Input(false) self.player_components.move:Set_Movement_Settings(vector(0, 0), vector(0,0), 0, 0, 0) end end,]]
               --{Test = function(separating_vector) self:moveTo(self.position + vector(separating_vector.x, separating_vector.y)) end,
-              Enemy = function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y)) end end}
+              Enemy = function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.health:takeDamage(separating_vector, other) end end}
+  }
+  -- these are conditions that the collisions resolution system checks before resolving collisions. the conditions of each party is checked. if either returns false, then no resolution is done
+  -- on either party.
+  self.collision_condition = {
+    Player = {Enemy = function() return self.player_components.health:isVulnerable() end}
   }
 end
 
@@ -72,8 +98,17 @@ function Player:change_states(to)
   local from_state = self.current_state
   -- switch states
   self.current_state = Player.player_states[to]
+  -- calls the exit function on the transitioning state
+  if  from_state.exit then  from_state.exit(self, self.current_state) end
   -- calls the enter function on the new state, with the from state as an optional parameter
-  self.current_state.enter_state(from_state)
+  self.current_state.enter_state(self, from_state)
+    
+  self:updateCancelTimers()
+    
+  -- resets the input buffer when an action state is entered
+  if not self:Current_State_Is('idle') and not self:Current_State_Is('holding') then 
+    self:clearInputBuffer()
+  end
 end
 
 function Player:Current_State_Is(state)
@@ -99,6 +134,59 @@ function Player:input_button(action)
   end
   --[[ bracket notation is used instead of dot notation when indexing tables/calling functions because we are working with parameters here, hence we don't know what value we'll be looking for.
   dot notation only works if the name of the variable matches up with the value we are looking to index.]]
+
+  --if self.is_buffering_input[action] then self.buffered_input = action print('buffer ' .. action) elseif not string.find(action, 'release_') then print('initiate ' .. action) end
+  if self.is_buffering_input[action] then self.buffered_input = action end
+  
+  -- updates is_holding_input variables
+  if string.find(action, 'release_') then 
+    _, j = string.find(action, 'release_')
+    local input_name = string.sub(action, j+1)
+    self.is_holding_input[input_name] = false
+  else 
+     self.is_holding_input[action] = true
+  end
+    
+end
+
+-- @param which represents which buffer to set (a string, being 'attack', 'move', 'grab' or 'all')
+-- @param setting a boolean representing whether the buffer is active or not (a boolean)
+function Player:setInputBuffering(which, setting)
+  if which == 'all' then
+    for k,_ in pairs(self.is_buffering_input) do
+      self.is_buffering_input[k] = setting
+    end
+  else
+    self.is_buffering_input[which] = setting
+  end
+end
+
+function Player:clearInputBuffer()
+  self.buffered_input = nil
+  self:setInputBuffering('all', false)
+end
+
+function Player:addCancelTimer(time, condition, action)
+  local ct = {}
+  ct.action = function() action() self:removeCancelTimer(ct.handle) end
+  ct.condition = condition
+  ct.handle = self.protected_timer:after(time, ct.action)
+  table.insert(self.cancel_timers, ct)
+  --print(#self.cancel_timers)
+end
+
+function Player:removeCancelTimer(handle)
+  for i, ct in ipairs(self.cancel_timers) do
+    if ct.handle == handle then table.remove(self.cancel_timers, i) end
+  end
+  --print(#self.cancel_timers)
+end
+
+function Player:updateCancelTimers()
+  for i = #self.cancel_timers, 1, -1 do 
+    local ct = self.cancel_timers[i]
+    if not ct.condition() then self.protected_timer:cancel(ct.handle) ct.action() end
+  end
 end
 
 function Player:draw()
@@ -117,11 +205,21 @@ function Player:draw()
   love.graphics.setColor(255, 255, 255, 1)
 end
 
-function Player:update(dt, move_input_x, move_input_y)  
+function Player:update(dt, move_input_x, move_input_y) 
   for _, component in pairs(self.player_components) do
-    component:update(dt)
+    component:update(dt, move_input_x, move_input_y)
   end
   
+  self.protected_timer:update(dt)
+  if self.buffered_input and not self.is_buffering_input[self.buffered_input] then self:input_button(self.buffered_input) self.buffered_input = nil end
+  
+ --[[ 
+  for _,ct in ipairs(self.cancel_timers) do
+    if not ct.condition() then self.protected_timer:cancel(ct.handle) ct.action() end
+  end
+--]]
+  self:updateCancelTimers()
+    
   local last_pos = self.ground_pos
   
   --player's custom version of the movement segment of Entity.update()

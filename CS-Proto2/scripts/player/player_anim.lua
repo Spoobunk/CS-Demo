@@ -56,6 +56,7 @@ function Player_Anim:new()
       stand_upleft = anim8.newAnimation(g2(2, 2), 1),
       stand_left = anim8.newAnimation(g2(3,2, 4,3, 3,2, 4,3), {4, .1, .3, .1}),
       stand_downleft = anim8.newAnimation(g2(4,2, 1,4, 4,2, 1,4), {4, .1, .3, .1}),
+      spin = anim8.newAnimation(g2('1-4', 1, '1-4', 2), .03)
     },
     {
       sheet = attack_atlas,
@@ -63,11 +64,11 @@ function Player_Anim:new()
       center_position = 73,
       do_flip = true,
       --attack = anim8.newAnimation(attack_grid('1-3', 1, '1-3', 2, '1-2', 3), .5)
-      mash1 = anim8.newAnimation(attack_grid('1-3', 1), {.02, .06, .08}, 'pauseAtEnd'),
+      mash1 = anim8.newAnimation(attack_grid('1-3', 1), {.03, .05, .08}, 'pauseAtEnd'),
       mashready2 = anim8.newAnimation(attack_grid(4, 1), 1, 'pauseAtEnd'),
-      mash2 = anim8.newAnimation(attack_grid('1-3', 2), {.02, .06, .08}, 'pauseAtEnd'),
+      mash2 = anim8.newAnimation(attack_grid('1-3', 2), {.03, .05, .08}, 'pauseAtEnd'),
       mashready3 = anim8.newAnimation(attack_grid(4, 2), 1, 'pauseAtEnd'),
-      mash3 = anim8.newAnimation(attack_grid('1-2', 3, 3, 1), {.02, .06, .08}, 'pauseAtEnd')
+      mash3 = anim8.newAnimation(attack_grid('1-2', 3, 3, 1), {.03, .05, .08}, 'pauseAtEnd')
     },
     {
       sheet = big_test,

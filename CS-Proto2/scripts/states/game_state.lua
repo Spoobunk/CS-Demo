@@ -11,8 +11,8 @@ bump = require "libs.bump.bump"
 HC = require "libs.hardoncollider"
 STI = require "libs.STI.sti"
 gscreen = require "libs.pixel.pixel"
-gscreen.load(2)
-gscreen.toggle_fullscreen()
+gscreen.load(3)
+--gscreen.toggle_fullscreen()
 
 et = require "scripts.entities.enemies.enemy_test"
 
@@ -30,9 +30,9 @@ local input = baton.new {
     right = {'key:right', 'key:d', 'axis:leftx+', 'button:dpright'},
     up = {'key:up', 'key:w', 'axis:lefty-', 'button:dpup'},
     down = {'key:down', 'key:s', 'axis:lefty+', 'button:dpdown'},
-    attack = {'key:z', 'button:x'},
-    spin = {'key:x', 'button:a'},
-    grab = {'key:c', 'axis:triggerleft+', 'axis:triggerright+'}
+    attack = {'key:z', 'key:j', 'button:x'},
+    spin = {'key:x', 'key:k', 'button:a'},
+    grab = {'key:c', 'key:l', 'axis:triggerleft+', 'axis:triggerright+'}
   },
   pairs = {
     move = {'left', 'right', 'up', 'down'}
@@ -41,6 +41,7 @@ local input = baton.new {
 }
 
 function game_state:enter()
+  print(love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setDefaultFilter("nearest", "nearest", 1)
   love.graphics.setLineStyle("rough")
 
@@ -85,7 +86,7 @@ function game_state:enter()
   e_guq = et(0, 300, entity_collision, tile_world)
   e_guz = et(0, 300, entity_collision, tile_world)
   e_gux = et(0, 300, entity_collision, tile_world)
-  e_guc = et(0, 300, entity_collision, tile_world)
+  e_guc = et(600, 150, entity_collision, tile_world)
   entity_manager:addEntity(e_boy)
   entity_manager:addEntity(e_guy)
   entity_manager:addEntity(e_gut)
@@ -114,22 +115,36 @@ function game_state:update(dt)
     p:input_button('attack')
   end
   
+  if input:released('attack') then
+    p:input_button('release_attack')
+  end
+  
   if input:pressed('spin') then
+    --[[
     test_timer:clear()
     if zoom_tween == nil then 
       zoom_tween = test_timer:tween(1, scaling_factor, {s = 2}, "out-quad") 
     else 
       zoom_tween = test_timer:tween(1, scaling_factor, {s = 1}, "out-quad", function() zoom_tween = nil end)
     end
-    
-    --p:input_button('spin')
+    ]]
+    p:input_button('spin')
+  end
+  
+  if input:released('spin') then 
+    p:input_button('release_spin')
   end
   
   if input:pressed('grab') then
     p:input_button('grab')
   end
   
+  if input:released('grab') then
+    p:input_button('release_grab')
+  end
+  
   movex, movey = input:get('move')
+  
   p:update(dt, movex, movey)
   entity_manager.updateEntities(dt)
   entity_manager:updateRenderOrder()
@@ -140,14 +155,16 @@ function game_state:update(dt)
 
   map:update(dt)
   gscreen.update(dt)
+  --print('------------')
 end
 
 function game_state:draw()
   
-    
+  
   gscreen.start()
   --gam:draw(function()
-    camera:attach(0, 0, love.graphics.getWidth() / gscreen.scale, love.graphics.getHeight() / gscreen.scale, "noclip")
+    camera:attach(0, 0, 1920 / gscreen.scale, 1080 / gscreen.scale, "noclip")
+    --camera:attach()
     --love.graphics.draw(test_img, p.position.x, p.position.y)
     --for some reason drawing the player from its own draw method results in weird jumpled sprites, while drawing directly in this method looks fine.
     --p.player_components.anim:draw(p.position.x, p.position.y)
@@ -162,7 +179,7 @@ function game_state:draw()
     camera:detach()
   --end)
   gscreen.stop()
-  love.graphics.print("Current FPS: "..tostring(love.timer.getFPS( )), 10, 10)
+  love.graphics.print("Current FPS: "..tostring(love.timer.getFPS()), 10, 10)
   
 end
 

@@ -13,6 +13,11 @@ function Player_Move:new(state_manager)
   self.direction = vector(0,0)
   -- source of truth for the direction the player is facing, 1 for right, -1 for left
   self.face_direction = 1
+  -- digital vector keeping track of movement input
+  self.raw_input = vector(0,0)
+  -- vector keeps track of latest movement input (it is never 0)
+  self.last_input = vector(1,1)
+    
   self.velocity = vector(0,0)
   -- constants that represent Stooba's normal movement, when runnin' around
   self.RUN_ACC = 200
@@ -24,12 +29,32 @@ function Player_Move:new(state_manager)
   self.max_velocity = self.RUN_MAX_VEL
   
   self.accepting_movement_input = true
+  self.can_dodge_spin = true
   -- timer instance only for things related to movement
   self.move_timer = Timer.new()
 end
 
-function Player_Move:update(dt) 
+function Player_Move:update(dt, axis_x, axis_y) 
   self.move_timer:update(dt)
+  
+  local input_x = (axis_x == 0 and 0 or axis_x / math.abs( axis_x ))
+  local input_y = (axis_y == 0 and 0 or axis_y / math.abs( axis_y ))
+  self.raw_input = vector(input_x, input_y)
+  -- technically I could replace face_direction with last_input.x
+  self.last_input = vector(input_x ~= 0 and input_x or self.last_input.x, input_y ~= 0 and input_y or self.last_input.y)
+  self.face_direction = input_x ~= 0 and input_x or self.face_direction
+  if self.state_manager.current_state.flip_sprite_horizontal then self.state_manager.player_components.anim:flipSpriteHorizontal(self.face_direction) end
+    
+  -- does running animation
+  if(self.state_manager:Current_State_Is("idle")) then
+    local anim = self.state_manager.player_components.anim
+    if input_x == 0 and input_y == 0 then
+      anim:Switch_Animation(anim.idle_anim)
+    else
+      anim:Switch_Animation(anim.walk_anim_matrix[2+input_y][2+input_x])
+      anim.idle_anim = anim.idle_anim_matrix[2+input_y][2+input_x]
+    end
+  end
 end
 
 function Player_Move:get_movement_step(dt, axis_x, axis_y)
@@ -38,25 +63,6 @@ function Player_Move:get_movement_step(dt, axis_x, axis_y)
   if(self.state_manager.current_state.canMove and self.accepting_movement_input) then
     self.direction = vector(axis_x,axis_y)
   end
-  
-  -- does running animation
-  if(self.state_manager:Current_State_Is("idle")) then
-    local input_x = (axis_x == 0 and 0 or axis_x / math.abs( axis_x ))
-    local input_y = (axis_y == 0 and 0 or axis_y / math.abs( axis_y ))
-    local anim = self.state_manager.player_components.anim
-    if input_x == 0 and input_y == 0 then
-      anim:Switch_Animation(anim.idle_anim)
-    else
-      anim:Switch_Animation(anim.walk_anim_matrix[2+input_y][2+input_x])
-      anim.idle_anim = anim.idle_anim_matrix[2+input_y][2+input_x]
-      if not(input_x == 0) then
-        -- update the sprite's horizontal scale based on the direction the player is moving.
-        self.state_manager.player_components.anim:flipSpriteHorizontal(input_x)  
-        self.face_direction = input_x
-      end
-    end
-  end
-  
 
   --move withouth acceleration
   --self.velocity = self.velocity + delta * self.max_velocity
@@ -70,7 +76,7 @@ function Player_Move:get_movement_step(dt, axis_x, axis_y)
   --[[ the problem here is that acceleration and friction didn't seem to work when using the line below for friction. 
   It seems the friction was so great that the beginning acceleration couldn't overcome it to build up speed. I replaced the math.min line with the line below it, 
   and got rid of '* dt' in the acceleration line. that seemed to fix the scaling so acceleration and friction could work together. However, it seems like there is 
-  a hard cap on the max_velocity value which depends on the friction value, which might be caused by the same problem I had before. Also, I'm not sure if removing 
+  a hard cap on max velocity which depends on the friction value, which might be caused by the same problem I had before. Also, I'm not sure if removing 
   the dt multiplications would affect how this runs on other computers. ]]
   
   --self.velocity = self.velocity * (1 - math.min(dt * self.friction, 1))
@@ -111,20 +117,48 @@ function Player_Move:getVelocity()
   return self.velocity
 end
 
--- @param can whether the player is accepting movement input or not (a boolean)
+-- @param can boolean whether the player is accepting movement input or not (a boolean)
 function Player_Move:Set_Movement_Input(can)
   self.accepting_movement_input = can
 end
 
 -- @param knockback_dir vector representing the direction of knockback (provided by collisions in player_state)
 function Player_Move:Damaged_Knockback(knockback_dir)
+  self.move_timer:clear()
+  self.state_manager:change_states('hitstun')
   knockback_dir:normalizeInplace()
   self:Set_Movement_Settings(vector(0, 0), knockback_dir * 1700, 50, 0.55, 3000)
   self:Set_Movement_Input(false)
-  self.move_timer:clear()
-  self.move_timer:after(0.3, function() self:Set_Movement_Settings(vector(0, 0), false, self.RUN_ACC, self.RUN_FRIC, self.RUN_MAX_VEL) end)
+  self.move_timer:after(0.3, function() self.state_manager:change_states('idle') self:Set_Movement_Settings(vector(0, 0), false, self.RUN_ACC, self.RUN_FRIC, self.RUN_MAX_VEL) end)
   self.move_timer:after(0.05, function() self:Set_Movement_Input(true) end)
 end
-  
+
+function Player_Move:dodgeSpin()
+  if not self.can_dodge_spin then return false end
+  self.state_manager:change_states('spinning')
+  self:Set_Movement_Input(false)
+  self.move_timer:clear()
+  if self.raw_input ~= vector(0, 0) then 
+    local spin_dir = self.raw_input:normalized()
+    self:Set_Movement_Settings(vector(0, 0), spin_dir * 1600, 10, 0.6, 3000)
+    self.move_timer:after(0.2, function() self:Set_Movement_Settings(nil, nil, 10, 0.3, 3000) end)
+    self.move_timer:after(0.05, function() self:Set_Movement_Input(true) end)
+  end
+  self.move_timer:after(0.30, function() self.state_manager:setInputBuffering('all', true) end)
+  self.move_timer:after(0.35, function() 
+    self.state_manager:change_states('idle') 
+    self.state_manager:setInputBuffering('attack', false)
+    self.state_manager:setInputBuffering('grab', false)
+    self:Set_Movement_Settings(vector(0, 0), false, self.RUN_ACC, self.RUN_FRIC, self.RUN_MAX_VEL) 
+    self:dodgeSpinCooldown()
+  end)
+end
+
+function Player_Move:dodgeSpinCooldown()
+  self.can_dodge_spin = false
+  self.state_manager:addCancelTimer(0.12, function() return self.state_manager:Current_State_Is('idle') end, function() self.can_dodge_spin = true self.state_manager:setInputBuffering('spin', false) end)
+  --self.move_timer:after(0.9, function() self.can_dodge_spin = true self.state_manager:setInputBuffering('spin', false) end)
+end
+
 
 return Player_Move

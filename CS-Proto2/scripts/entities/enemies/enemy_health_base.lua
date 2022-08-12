@@ -18,8 +18,9 @@ function HealthBase:new(base_health, main_class, anim_component, move_component)
 end
 
 -- need to change this so the trigger knockback signal is emitted every time a stage of the smash attack ends, but getting hit by another attack cancels any knockback before it occurs
-function HealthBase:takeDamage(seperating_vector, attack_collider)
+function HealthBase:takePlayerDamage(seperating_vector, attack_collider)
   if self.last_attack_hitbox ~= attack_collider then
+    self.main:abortAttack()
     self.timer:clear()
     self.main:changeStates('hitstun')
 
@@ -38,7 +39,30 @@ function HealthBase:takeDamage(seperating_vector, attack_collider)
     --self.move:setMovementSettings(vector(0, 0), vector(0, 0), 0, 0, 0)
     
     -- if I need to apply knockback a little bit of time after the attack finishes, I just need to have the signal trigger a timer
-    self.attack_signal:register('attack-end', function() self.main.traveling_with_player = false self.move:setMovementSettings(vector(0, 0), vector(0, 0), 0, 0, 3000) end)
+    -- 
+    self.attack_signal:register('attack-end', function(sit) 
+      self.main.traveling_with_player = false
+      if sit == 'aborted' then 
+        self.timer:clear() self:knockback(seperating_vector, attack_collider.knockback) 
+        print('flooly')
+      else 
+        self.move:setMovementSettings(vector(0, 0), vector(0, 0), 0, 0, 3000) 
+      end 
+    end)
+  end
+end
+
+function HealthBase:takeDamage(seperating_vector, thrown_collider)
+  if self.last_attack_hitbox ~= thrown_collider then
+    self.last_attack_hitbox = thrown_collider
+    self.main:abortAttack()
+    self.timer:clear()
+    thrown_collider.object:bounceOff(seperating_vector)
+    self.main:changeStates('hitstun')
+    -- knockback velocity = unit vector representing direction * magnitude of the thrown entity's velocity
+    local knockback_velocity = seperating_vector:normalizeInplace() * (thrown_collider.object.Move.velocity:len() * 0.75)
+    self.move:setMovementSettings(vector(0, 0), knockback_velocity, 50, 0.55, 3000)
+    self.timer:after(0.5, function() self.move:defaultMovementSettings() self.main:changeStates('alerted') end)
   end
 end
 

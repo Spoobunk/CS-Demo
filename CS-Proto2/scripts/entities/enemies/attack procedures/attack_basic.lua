@@ -93,13 +93,13 @@ end
 function AttackBasic:stage4()
   self.main_class:removeCollider(self.hitbox)
   self.main_class.Move:setMovementSettings(nil, nil, 0, 0.3, nil)
-  self.timer:after(0.8, function() self:nextStage() end)
+  self.timer:after(0.8, function() self.main_class:changeStates('alerted') end)
   self.timer:tween(0.8, self.attack_anim_duration, {d = 0.1}, 'in-linear')
 end
   
 function AttackBasic:exit()
   if self.hitbox then self.main_class:removeCollider(self.hitbox) end
-  self.main_class:changeStates('alerted')
+  --self.main_class:changeStates('alerted')
   self.main_class.current_attack = nil
   self.main_class.height = 0
 end

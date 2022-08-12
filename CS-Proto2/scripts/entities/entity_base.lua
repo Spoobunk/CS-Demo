@@ -14,10 +14,13 @@ function Entity:new(x, y, collision_world, tile_world)
   -- Entities should only have one tile collider
   self.tile_collider = nil
   self.colliders = {}
+  self.do_collision = true
   -- Entities will have to intialize their move and anim components themselves
   self.Move = nil
   self.Anim = nil
   self.base_image_offset = vector(0, 0)
+  self.collision_resolution = {}
+  self.collision_condition = {}
 end
 
 function Entity:update(dt)
@@ -29,7 +32,7 @@ function Entity:updateMovement(dt, movementStep)
   local target_pos = self.ground_pos + movementStep
   
   -- moving taking the tile collider into account
-  if(self.Move and self.tile_collider) then
+  if(self.Move and self.tile_collider and self.do_collision) then
     local move_step = movementStep
     local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
     local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
@@ -65,8 +68,12 @@ function Entity:setUpTileCollider(x, y, ox, oy, w, h)
   self.tile_collider_offset = vector(ox, oy)
 end
 
+-- function used to resolve tile collisions based on what the function returns
+--function Entity:resolveTileCollisions(item, other)
+
 function Entity:checkTileCollisionForHeight(item, other)
-  if(not other.isTile and (self:is(Enemy) and other:is(Enemy))) then return false end
+  -- disables tile collisions between entities (for now)
+  if(not other.isTile and self:is(Entity)) then return false end
   
   -- allows entities to skip over tiles if they are above a certain height
   if(self.height > 50) then
@@ -84,9 +91,26 @@ function Entity:addCollider(collider, tag, object, position_function, enabled)
   collider.tag = tag
   collider.object = object
   collider.position_function = position_function 
-  collider.enabled = enabled or true
+  collider:moveTo(position_function())
+  if enabled == nil then collider.enabled = true else collider.enabled = enabled end
   table.insert(self.colliders, collider)
   return collider
+end
+
+-- @param native_collider: string: tag of a collider belonging to the entity calling the method
+-- @param foreign_collider: string: tag of a collider belonging to any other entity
+-- @param response: function that runs whenever the native and foreign colliders collide.
+function Entity:setCollisionResolution(native_collider, foreign_collider, response)
+  if not self.collision_resolution[native_collider] then self.collision_resolution[native_collider] = {} end
+  self.collision_resolution[native_collider][foreign_collider] = response
+end
+
+-- @param native_collider: string: tag of a collider belonging to the entity calling the method
+-- @param foreign_collider: string: tag of a collider belonging to any other entity
+-- @param condition: function that returns a boolean, true meaning the colliders can collide and false meaning they can't.
+function Entity:setCollisionCondition(native_collider, foreign_collider, condition)
+  if not self.collision_condition[native_collider] then self.collision_condition[native_collider] = {} end
+  self.collision_condition[native_collider][foreign_collider] = condition
 end
 
 function Entity:updateColliderPositions()
@@ -97,12 +121,15 @@ end
 
 -- this birds gotta big nest (lol!)
 function Entity:resolveCollisions()
+  if not self.do_collision then return false end
   for _,c in ipairs(self.colliders) do
     if self.collision_resolution[c.tag] and c.enabled then
       local collisions = self.collision_world:collisions(c)
       for other, separating_vector in pairs(collisions) do
-        if(self.collision_resolution[c.tag][other.tag] and other.enabled) then
-          self.collision_resolution[c.tag][other.tag](separating_vector, other)
+        if other.object.do_collision and other.enabled and self.collision_resolution[c.tag][other.tag] then 
+          -- this checks the collision_condition table for each entity in the collision. If either condition returns false, than this collision is ignored and neither entity responds
+          local condition_check = (self.collision_condition[c.tag] and self.collision_condition[c.tag][other.tag] and not(self.collision_condition[c.tag][other.tag]())) or (other.object.collision_condition[other.tag] and other.object.collision_condition[other.tag][c.tag] and not(other.object.collision_condition[other.tag][c.tag]()))
+          if not condition_check then self.collision_resolution[c.tag][other.tag](separating_vector, other) end
         end
       end
     end
@@ -129,8 +156,9 @@ end
   
 
 function Entity:drawColliders()
+  if not self.do_collision then return false end
   for _,c in ipairs(self.colliders) do
-    c:draw()
+    if c.enabled then c:draw() end
   end
 end
 

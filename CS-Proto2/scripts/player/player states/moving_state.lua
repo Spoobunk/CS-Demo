@@ -10,7 +10,10 @@ end
 Moving_State.input = {
   attack = nil,
   spin = "do spin",
-  grab = "do grab"
+  grab = "do grab",
+  release_attack = nil, 
+  release_spin = nil,
+  release_grab = nil
 }
 
 Moving_State.name = "moving"

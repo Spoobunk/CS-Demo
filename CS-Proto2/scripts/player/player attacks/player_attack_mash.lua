@@ -18,13 +18,13 @@ function AttackMash:new(main_class)
 
   AttackMash.super.new(self)
   self.stages = {
-    {enter = function() self:stage1() end,
+    {enter = function() self.timer:script(function(wait) self:stage1(wait) end) end,
      knockback = 1000}, 
-    {enter = function() self:stage2() end,
+    {enter = function() self.timer:script(function(wait) self:stage2(wait) end) end,
      knockback = 1000},
-    {enter = function() self:stage3() end,
+    {enter = function() self.timer:script(function(wait) self:stage3(wait) end) end,
      knockback = 1000},
-    {enter = function() self:stage4() end,
+    {enter = function() self.timer:script(function(wait) self:stage4(wait) end) end,
      knockback = 1700},
     {enter = function() self:exit() end}
   }
@@ -44,14 +44,15 @@ function AttackMash:swingMash(damage, kb_wait, kb_power)
   self.wall_pushed = false
   --if self.hitbox then self.player:removeCollider(self.hitbox) end
   local collider = self.player.collision_world:rectangle(self.player.position.x + (60 * self.attack_direction), self.player.position.y, 70, 100)
-  --self.hitbox = self.player:addCollider(collider, "PlayerAttack", self.player, function() return self.player.position.x + (60 * self.attack_direction), self.player.position.y end) 
   self.hitbox = self.main_class:addAttackHitbox(collider, "PlayerAttack", function() return self.player.position.x + (60 * self.attack_direction), self.player.position.y end, damage, kb_power, self.signal, kb_wait)
   self.signal:register('pushed-against-wall', function(distance) self:pushBack(distance) end)
   
   self.move:defaultMovementSettings() 
   self.move:Set_Movement_Settings(vector(0, 0), vector(self.attack_direction * 1400, self.move.velocity.y), 50, 0.7, 700)
-  self.timer:after(0.4, function() self:exit() end)
-  self.timer:after(0.05, function() self.player:removeCollider(self.hitbox) end)
+  --self.timer:after(0.0, function() self.player:setInputBuffering('spin', true) self.player:setInputBuffering('grab', true) end)
+  -- no need to call the exit method manually, it's called whenever the player's state transitions from the attacking state
+  self.timer:after(0.4, function() --[[self:exit()]] self.player:change_states('idle') end)
+  self.timer:after(0.06, function() self.player:removeCollider(self.hitbox) end)
 end
 
 function AttackMash:pushBack(distance)
@@ -72,51 +73,71 @@ end
 
 function AttackMash:nextStage()
   self.timer:clear()
+  -- removes the attack hitbox if it still exists so that hitboxes don't pile up on eachother
+  if self.hitbox then self.player:removeCollider(self.hitbox) end
   self.accepting_input = false
   -- resetting the input buffer every time stage changes  
   self.input_buffer = utilities:createStack()
+  self.player:clearInputBuffer()
+  
   AttackMash.super.nextStage(self)
 end
 
-function AttackMash:stage1()
+function AttackMash:stage1(wait)
   self.anim:Switch_Animation('mash1') 
-  self:swingMash(3, 0.5, self.stages[self.current_stage].knockback)
-  self.timer:after(0.11, function() self.accepting_input = true if self.input_buffer:pop() then self:nextStage() end end)
+  self:swingMash(3, 0.45, self.stages[self.current_stage].knockback)
+
+  wait(0.11)
+  self.accepting_input = true
+  if self.input_buffer:pop() then self:nextStage() end
+  wait(0.2)
+  self.player:setInputBuffering('spin', true)
+  self.player:setInputBuffering('grab', true)
 end
 
-function AttackMash:stage2()
+function AttackMash:stage2(wait)
+  -- ready time
   self.anim:Switch_Animation('mashready2')
-  -- time between ready animation and actual swing
-  self.timer:after(0.1, function() 
-    self.anim:Switch_Animation('mash2')
-    self:swingMash(3, 0.5, self.stages[self.current_stage].knockback)
-    self.timer:after(0.11, function() self.accepting_input = true if self.input_buffer:pop() then self:nextStage() end end)
-  end)
+  wait(0.08)
+  self.anim:Switch_Animation('mash2')
+  self:swingMash(3, 0.45, self.stages[self.current_stage].knockback)
+  wait(0.11)
+  self.accepting_input = true 
+  if self.input_buffer:pop() then self:nextStage() end
+  wait(0.2)
+  self.player:setInputBuffering('spin', true)
+  self.player:setInputBuffering('grab', true)
 end
 
-function AttackMash:stage3()
+function AttackMash:stage3(wait)
+  -- ready time
   self.anim:Switch_Animation('mashready3')
-  -- time between ready animation and actual swing
-  self.timer:after(0.1, function()
-    self.anim:Switch_Animation('mash3') 
-    self:swingMash(3, 0.5, self.stages[self.current_stage].knockback)
-    self.timer:after(0.11, function() self.accepting_input = true if self.input_buffer:pop() then self:nextStage() end end)
-  end)
+  wait(0.08)
+  self.anim:Switch_Animation('mash3')
+  self:swingMash(3, 0.45, self.stages[self.current_stage].knockback)
+  wait(0.11)
+  self.accepting_input = true 
+  if self.input_buffer:pop() then self:nextStage() end
+  wait(0.2)
+  self.player:setInputBuffering('spin', true)
+  self.player:setInputBuffering('grab', true)
 end
 
-function AttackMash:stage4()
+function AttackMash:stage4(wait)
+  -- ready time
   self.anim:Switch_Animation('mashready2')
-  -- time between ready animation and actual swing
-  self.timer:after(0.1, function() 
-    self.anim:Switch_Animation('mash2')
-    self:swingMash(6, 0.02, self.stages[self.current_stage].knockback)
-  end)
+  wait(0.08)
+  self.anim:Switch_Animation('mash2')
+  self:swingMash(6, 0.02, self.stages[self.current_stage].knockback)
+  wait(0.28)
+  self.player:setInputBuffering('spin', true)
+  self.player:setInputBuffering('grab', true)
+  self.player:setInputBuffering('attack', true)
 end
 
 -- here we reset any values we were messin' with
 function AttackMash:exit()
   self.move:defaultMovementSettings() 
-  self.signal:emit('attack-end')
   -- get rid of all attack hitboxes
   local attack_hitboxes = {}
   for _, c in ipairs(self.player.colliders) do
@@ -125,8 +146,6 @@ function AttackMash:exit()
   for i, c in ipairs(attack_hitboxes) do
     self.player:removeCollider(c)
   end
-  
-  self.main_class:exit()
 end
   
 return AttackMash

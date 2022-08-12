@@ -10,6 +10,7 @@ basic_attack = require "scripts.entities.enemies.attack procedures.attack_basic"
 Enemy = require "scripts.entities.enemies.enemy_base"
 
 ET = Enemy:extend()
+--[[
 ET.state = {
   idle = {
     name = 'idle',
@@ -29,13 +30,12 @@ ET.state = {
       self.Move:defaultMovementSettings() 
       self.following_player = true
       -- this will cause problems with enemies that have multiple attacks.
-     --[[ for i,c in ipairs(self.colliders) do
+     for i,c in ipairs(self.colliders) do
         if c.tag == "Test" then
           self.collision_world:remove(c)
           table.remove(self.colliders, i)
         end
       end
-      --]]
     end,
     vulnerable = true
   },
@@ -46,18 +46,54 @@ ET.state = {
     end,
     exit = function(self)
       --self.current_attack:exit()
+      self.traveling_with_player = false
     end,
     vulnerable = true
   },
   hitstun = {
-    hitstun = 'hitstun',
+    name = 'hitstun',
     enter = function(self) 
       self.Anim:switchAnimation('idle')
       self.Anim:flipSpriteHorizontal(self.player_is_to)
     end,
     vulnerable = false
   },
-}
+}]]
+ET.state = ET.super.state
+ET.state.idle.enter = function(self) 
+  self.Anim:switchAnimation('idle')
+  self.facing_player = false
+  self.Move:defaultMovementSettings() 
+  self.following_player = false
+end
+
+ET.state.alerted.enter = function(self)
+  self.Anim:switchAnimation('walk')
+  self.facing_player = true
+  self.Move:defaultMovementSettings() 
+  self.following_player = true
+  -- this will cause problems with enemies that have multiple attacks.
+ --[[ for i,c in ipairs(self.colliders) do
+    if c.tag == "Test" then
+      self.collision_world:remove(c)
+      table.remove(self.colliders, i)
+    end
+  end
+  --]]
+end
+
+ET.state.hitstun.enter = function(self) 
+  self.Anim:switchAnimation('idle')
+  if self.player then self.Anim:flipSpriteHorizontal(self.player_is_to) end
+end
+
+ET.state.attacking.enter = function(self) end
+ET.state.attacking.exit = function(self)
+  --self.current_attack:exit()
+  self.abortAttack(self)
+end
+
+ET.state.grabbed.enter = function(self) self.Anim:switchAnimation('idle') self.Anim.current_anim:pause() end
 
 ET.attacks = {
     basic = basic_attack
@@ -99,14 +135,20 @@ function ET:new(x, y, collision_world, tile_world)
   self.attack_trigger_area = nil
   
   -- How this works: the collision resolution table specifies how to resolve collisions between colliders with certain tags. When a collider attached to this object collides with something, it goes here to look for how to resolve it, using the tag of the collided object.
+  --[[
   self.collision_resolution = {
-    Enemy = {Player = function(seperating_vector) local knockback_dir = vector(seperating_vector.x, seperating_vector.y):normalizeInplace() self.Move:setMovementSettings(nil, knockback_dir * 120, nil, nil, nil) end,
-              PlayerAttack = function(separating_vector, other) self:abortAttack() self.Health:takeDamage(vector(separating_vector.x, separating_vector.y), other) end,
+    Enemy = {PlayerAttack = function(separating_vector, other) self.Health:takeDamage(vector(separating_vector.x, separating_vector.y), other) end,
               Test = function(separating_vector) self:moveTo(self.ground_pos + vector(separating_vector.x, separating_vector.y)) end,
               Enemy = function(separating_vector, other) self:enemyOnEnemyCollision(separating_vector, other) end},
     AlertTrigger = {Player = function() if (self.state == ET.state.idle) then self:alertedToPlayer() end end},
     AttackTrigger = {Player = function() if (self.state == ET.state.alerted) then self:getInAttackPosition() end end},
-  } 
+  } ]]
+  --self.collision_resolution.AlertTrigger = {Player = function() if (self.state == ET.state.idle) then self:alertedToPlayer() end end}
+  --self.collision_resolution.AttackTrigger = {Player = function() if (self.state == ET.state.alerted) then self:getInAttackPosition() end end}
+  self:setCollisionResolution('AlertTrigger', 'Player', function() if (self.state == ET.state.idle) then self:alertedToPlayer() end end)
+  self:setCollisionResolution('AttackTrigger', 'Player', function() if (self.state == ET.state.alerted) then self:getInAttackPosition() end end)
+  
+  --self.collision_condition.Enemy = {Enemy = function() return self.state ~= ET.state.hitstun end}
   
   self.following_player = false
   self.facing_player = true
@@ -114,7 +156,13 @@ function ET:new(x, y, collision_world, tile_world)
   self:setUpTileCollider(self.pos.x, self.pos.y, 10, 0, 20, 24)
 end
 
+-- function run every time the enemy is thrown, creating a thrown collider for the enemy
+function ET:instanceThrowCollider()
+  self.thrown_hitbox = self:addThrownCollider(self.collision_world:circle(self.pos.x, self.pos.y, 40), function() return self.ground_pos:unpack() end, 30, 400)
+end
+
 function ET:update(dt)
+  ET.super.update(self, dt)
   self.Anim:update(dt)
   self.Move:update(dt)
   self.Health:update(dt)
@@ -134,7 +182,7 @@ function ET:update(dt)
   
   
   -- the update function of the superclasses has to come after updating the attack, otherwise the height variable will be all off.
-  ET.super.update(self, dt)
+  
 end
 
 function ET:draw()
@@ -145,7 +193,7 @@ function ET:draw()
   --love.graphics.rectangle('line', self.pos.x, self.pos.y, self.Anim:getCurrentAnim():getDimensions())
   love.graphics.points(self.pos:unpack())
 
-  --self:drawColliders()
+  self:drawColliders()
   --self:drawTileCollider()
   --self:drawRenderPosition()
   love.graphics.setColor(1, 1, 1, 1)
@@ -175,15 +223,6 @@ function ET:abortAttack()
   end
 end
 
-function ET:changeStates(to_state)
-  -- calls the exit method on the last state if one is provided
-  if self.state.exit then self.state.exit(self) end
-  self.state = ET.state[to_state]
-  self.state.enter(self)
-end
 
-function ET:currentStateIs(is_state)
-  return self.state == ET.state[is_state] 
-end
 
 return ET
