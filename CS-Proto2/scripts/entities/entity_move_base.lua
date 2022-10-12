@@ -14,14 +14,21 @@ function EntityMove:new(default_acc, default_fric, default_max_vel)
   self.friction = self.RUN_FRIC
   self.max_velocity = self.RUN_MAX_VEL
   
+  self.update_movement = true
+  
   self.move_timer = Timer.new()
+  -- a timer instance only used for height tweens
+  self.height_timer = Timer.new()
 end
 
 function EntityMove:update(dt)
   self.move_timer:update(dt)
+  self.height_timer:update(dt)
 end
 
 function EntityMove:getMovementStep(dt)
+  if not self.update_movement then return vector(0, 0) end
+  
   self.velocity = self.velocity + self.direction * self.acceleration
   
   if self.velocity:len() > self.max_velocity then

@@ -22,10 +22,27 @@ function PlayerHealth:isVulnerable()
 end
 
 function PlayerHealth:takeDamage(separating_vector, other_collider)
-  --if self.state_manager.current_state.vulnerable and self.invincible == false then 
-     self.state_manager.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y))
-     other_collider.object:collisionBounce(separating_vector)
-  --end
+  local last_state = self.state_manager:Get_Current_State()
+  self.state_manager:change_states('hitstun')
+  local damage = other_collider.damage
+  local suspense = other_collider.suspense or damage * 0.01
+  local knockback = other_collider.knockback or damage * 1000
+  self.state_manager.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y), knockback)
+  self.state_manager.player_components.grab:abortGrab(suspense, last_state)
+  self.state_manager:setSuspense(suspense, false)
+  if other_collider.tag == 'Enemy' then other_collider.object:collisionBounce(separating_vector, suspense) end
+end
+
+--this method is useful for when the player should take damage 'on-command', rather than as the result of any collision
+function PlayerHealth:takeDirectDamage(damage, sus, kb_pow, knockback_dir)
+  if not self:isVulnerable() then return false end
+  local last_state = self.state_manager:Get_Current_State()
+  self.state_manager:change_states('hitstun')
+  local suspense = sus or damage * 0.01
+  local knockback_pow = kb_pow or damage * 1000
+  self.state_manager.player_components.move:Damaged_Knockback(knockback_dir, knockback_pow)
+  self.state_manager.player_components.grab:abortGrab(suspense, last_state)
+  self.state_manager:setSuspense(suspense, false)
 end
 
 return PlayerHealth

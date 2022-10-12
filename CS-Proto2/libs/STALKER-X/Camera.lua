@@ -102,7 +102,11 @@ function Camera:attach()
     love.graphics.translate(self.w/2, self.h/2)
     love.graphics.scale(self.scale)
     love.graphics.rotate(self.rotation)
-    love.graphics.translate(-self.x, -self.y)
+    -- apparently, I altered this line to fix a tile-map tearing issue that occurs when STI inherits the camera's transformations (by default it resets the translation before drawing the tilemap (line 828 of init.lua), causing it to be unnaffected by the camera. I changed this)
+    -- however, changing this introduces the sprite shuddering problem that affects stooba and any sprites traveling with them. this problem appears no matter how I round or truncate the self.x and self.y values. However, this sprite shudder also appears even when I don't round these values, albeit less severly. It's clear that its these values not being integers that causes the tilemap tearing, though.
+    -- I have a hunch that the sprite shuddering thing being something I'll have to find a separate solution for.
+    love.graphics.translate(math.floor(-self.x + 0.5), math.floor(-self.y + 0.5))
+    --love.graphics.translate(-self.x, -self.y)
 end
 
 function Camera:detach()
@@ -255,6 +259,7 @@ function Camera:update(dt)
         -- Figure out how much the camera needs to scroll
         if target_x < x + (dx1 + dx2 - x) then
             local d = target_x - dx1
+            
             if d < 0 then scroll_x = d end
         end
         if target_x > x - (dx1 + dx2 - x) then
@@ -263,6 +268,7 @@ function Camera:update(dt)
         end
         if target_y < y + (dy1 + dy2 - y) then
             local d = target_y - dy1
+            
             if d < 0 then scroll_y = d end
         end
         if target_y > y - (dy1 + dy2 - y) then
@@ -272,6 +278,8 @@ function Camera:update(dt)
 
         -- Apply lead
         if not self.last_target_x and not self.last_target_y then self.last_target_x, self.last_target_y = self.target_x, self.target_y end
+        --if scroll_x ~= 0 then scroll_x = scroll_x + (self.target_x - self.last_target_x)*self.follow_lead_x end
+        --if scroll_y ~= 0 then scroll_y = scroll_y + (self.target_y - self.last_target_y)*self.follow_lead_y end
         scroll_x = scroll_x + (self.target_x - self.last_target_x)*self.follow_lead_x
         scroll_y = scroll_y + (self.target_y - self.last_target_y)*self.follow_lead_y
         self.last_target_x, self.last_target_y = self.target_x, self.target_y

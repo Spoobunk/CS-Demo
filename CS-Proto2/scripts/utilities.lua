@@ -13,6 +13,27 @@ function utilities.readFromJson(path)
   return luna.decode(jsonraw)
 end
 
+function utilities.randomSign()
+  local rand = math.random()
+  return rand >= 0.5 and 1 or -1 
+end
+
+-- copy a table
+function utilities.deepCopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        -- the 'next' thing is just another way of doing pairs()
+        for orig_key, orig_value in next, orig, nil do
+            copy[utilities.deepCopy(orig_key)] = utilities.deepCopy(orig_value)
+        end
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
 -- Create a Table with stack functions
 function utilities:createStack()
 

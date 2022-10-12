@@ -118,8 +118,9 @@ function camera:attach(x,y,w,h, noclip)
 	love.graphics.rotate(self.rot)
   -- this line altered to fix tile-map tearing that occurs when STI inherits the camera's transformations (by default it resets the translation before drawing the tilemap (line 828 of init.lua), causing it to be unnaffected by the camera. I changed this)
   -- It just rounds the translation values so that it always draws to the nearest integer, not flip-flopping between 2
-	love.graphics.translate(math.floor(-self.x + 0.5), math.floor(-self.y + 0.5))
+	love.graphics.translate(-math.floor(self.x + 0.5), -math.floor(self.y + 0.5))
   --love.graphics.translate(-self.x, -self.y)
+  --print(self.x, self.y)
 end
 
 function camera:detach()
@@ -191,9 +192,9 @@ function camera:lockPosition(x,y, smoother, ...)
 	return self:move((smoother or self.smoother)(x - self.x, y - self.y, ...))
 end
 
-function camera:lockWindow(x, y, x_min, x_max, y_min, y_max, smoother, ...)
+function camera:lockWindow(x, y, w, h, x_min, x_max, y_min, y_max, smoother, ...)
 	-- figure out displacement in camera coordinates
-	x,y = self:cameraCoords(x,y)
+	x,y = self:cameraCoords(x,y, 0,0, w,h)
 	local dx, dy = 0,0
 	if x < x_min then
 		dx = x - x_min

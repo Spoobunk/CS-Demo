@@ -15,32 +15,41 @@ function AttackGrab:new(main_class)
   self.attack_direction = self.move.face_direction
 
   AttackGrab.super.new(self)
-  self.signal:register('grab-success', function(grabbable) self.grab:onGrab(grabbable) end)
+  self.signal:register('grab-success', function(grabbable) self:onGrab(grabbable) end)
   self.stages = {
     {enter = function() self.timer:script(function(wait) self:stage1(wait) end) end}, 
-    {enter = function() self.timer:script(function(wait) self:stage2(wait) end) end},
-    {enter = function() self.timer:script(function(wait) self:stage3(wait) end) end},
-    {enter = function() self.timer:script(function(wait) self:stage4(wait) end) end},
     {enter = function() self:exit() end}
   }
 
   self.stages[self.current_stage].enter()
 end
 
+function AttackGrab:onGrab(grabbable)
+  self.player:setSuspense(0.1, true)
+  grabbable:setSuspense(0.1, true)
+  self.grab:onGrab(grabbable)
+  self.timer:after(0.1, function() self.grab:startHold() end)
+    -- get rid of all grab hitboxes
+  for i = #self.player.colliders, 1, -1 do 
+    local c = self.player.colliders[i]
+    if c.tag == "PlayerGrab" then self.player:removeCollider(c) end
+  end
+end
+
 function AttackGrab:stage1(wait)
+  -- wind up
   self.anim:Switch_Animation('mashready3')
   self.move:Set_Movement_Settings(vector(0, 0), nil, 50, 0.7, 700)
   wait(0.15)
+  -- swing
   self.anim:Switch_Animation('mash3')
-  self.move:Set_Movement_Settings(vector(0, 0), vector(self.attack_direction * 1400, self.move.velocity.y), 50, 0.7, 700)
+  self.move:Set_Movement_Settings(vector(0, 0), vector(self.attack_direction * 1400, self.main_class.move_input.y * 350), 50, 0.7, 700)
   local collider = self.player.collision_world:rectangle(self.player.position.x + (60 * self.attack_direction), self.player.position.y, 70, 100)
   local hitbox = self.main_class:addGrabHitbox(collider, function() return self.player.position.x + (60 * self.attack_direction), self.player.position.y end, self.signal)
   wait(0.06)
   self.player:removeCollider(hitbox)
   wait(0.22)
-  self.player:setInputBuffering('spin', true)
-  self.player:setInputBuffering('grab', true)
-  self.player:setInputBuffering('attack', true)
+  self.player:setInputBuffering('all', true)
   wait(0.17)
   self.player:change_states('idle')
 end
@@ -48,14 +57,11 @@ end
 function AttackGrab:exit(to_state)
   -- makes it so when the player transitions from grabbing to holding, they don't immediately lose all momentum.
   if to_state.name ~= 'holding' then self.move:defaultMovementSettings() end
-  -- pretty sure this is a waste, all i need to do is iterate through the collider array backwards and removing elements won't be a problem.
+  
   -- get rid of all grab hitboxes
-  local grab_hitboxes = {}
-  for _, c in ipairs(self.player.colliders) do
-    if c.tag == "PlayerGrab" then table.insert(grab_hitboxes, c) end
-  end
-  for i, c in ipairs(grab_hitboxes) do
-    self.player:removeCollider(c)
+  for i = #self.player.colliders, 1, -1 do 
+    local c = self.player.colliders[i]
+    if c.tag == "PlayerGrab" then self.player:removeCollider(c) end
   end
 end
 

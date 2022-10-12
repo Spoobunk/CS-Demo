@@ -13,7 +13,7 @@ function Player_Move:new(state_manager)
   self.direction = vector(0,0)
   -- source of truth for the direction the player is facing, 1 for right, -1 for left
   self.face_direction = 1
-  -- digital vector keeping track of movement input
+  -- digital vector keeping track of movement input at any given moment
   self.raw_input = vector(0,0)
   -- vector keeps track of latest movement input (it is never 0)
   self.last_input = vector(1,1)
@@ -21,13 +21,17 @@ function Player_Move:new(state_manager)
   self.velocity = vector(0,0)
   -- constants that represent Stooba's normal movement, when runnin' around
   self.RUN_ACC = 200
+  --self.RUN_ACC = 10
   self.RUN_FRIC = 0.85
+  --self.RUN_FRIC = 0.95
   self.RUN_MAX_VEL = 600
+  --self.RUN_MAX_VEL = 40
   -- variables used for calculating movement steps in any situation (knockback, while attacking, etc.)
   self.acceleration = self.RUN_ACC
   self.friction = self.RUN_FRIC
   self.max_velocity = self.RUN_MAX_VEL
   
+  self.update_movement = true
   self.accepting_movement_input = true
   self.can_dodge_spin = true
   -- timer instance only for things related to movement
@@ -58,10 +62,13 @@ function Player_Move:update(dt, axis_x, axis_y)
 end
 
 function Player_Move:get_movement_step(dt, axis_x, axis_y)
+  -- if the move component is set not to update movement, an empty vector is returned, so collisions detection still takes place as normal
+  if not self.update_movement then return vector(0, 0) end
  
   -- for states where the player can't control movement
   if(self.state_manager.current_state.canMove and self.accepting_movement_input) then
     self.direction = vector(axis_x,axis_y)
+    --print(self.direction)
   end
 
   --move withouth acceleration
@@ -79,19 +86,15 @@ function Player_Move:get_movement_step(dt, axis_x, axis_y)
   a hard cap on max velocity which depends on the friction value, which might be caused by the same problem I had before. Also, I'm not sure if removing 
   the dt multiplications would affect how this runs on other computers. ]]
   
-  --self.velocity = self.velocity * (1 - math.min(dt * self.friction, 1))
-   --self.velocity = self.velocity * self.friction
+   --self.velocity = self.velocity * (1 - math.min(dt * self.friction, 1))
+   --self.velocity = self.velocity * (1 - self.friction)
+   
    self.velocity = self.velocity * (1 - self.friction) ^ (dt * 10)
+   --print(self.velocity * dt)
+   --print(self.velocity:len())
   
   return self.velocity * dt
-end
-
-function Player_Move:spin()
-  local anim = self.state_manager.player_components.anim
-  anim:Switch_Animation("mash3")
-  self.state_manager:change_states('moving') 
-  --local hitbox = self.state_manager.collision_world:circle(self.state_manager.position.x + 30, self.state_manager.position.y, 40)
-  --self.state_manager:addCollider(hitbox, "Player_Attack", self.state_manager, function() return self.state_manager.position.x + 30, self.state_manager.position.y end)
+  --return vector(0, -10)
 end
 
 -- @param dir what to set the player's direction to (a normalized vector)
@@ -123,14 +126,13 @@ function Player_Move:Set_Movement_Input(can)
 end
 
 -- @param knockback_dir vector representing the direction of knockback (provided by collisions in player_state)
-function Player_Move:Damaged_Knockback(knockback_dir)
+function Player_Move:Damaged_Knockback(knockback_dir, knockback_power)
   self.move_timer:clear()
-  self.state_manager:change_states('hitstun')
   knockback_dir:normalizeInplace()
-  self:Set_Movement_Settings(vector(0, 0), knockback_dir * 1700, 50, 0.55, 3000)
+  self:Set_Movement_Settings(vector(0, 0), knockback_dir * knockback_power, 50, 0.55, 3000)
   self:Set_Movement_Input(false)
   self.move_timer:after(0.3, function() self.state_manager:change_states('idle') self:Set_Movement_Settings(vector(0, 0), false, self.RUN_ACC, self.RUN_FRIC, self.RUN_MAX_VEL) end)
-  self.move_timer:after(0.05, function() self:Set_Movement_Input(true) end)
+  self.move_timer:after(0.15, function() self:Set_Movement_Input(true) end)
 end
 
 function Player_Move:dodgeSpin()

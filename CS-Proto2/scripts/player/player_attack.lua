@@ -16,10 +16,12 @@ function PlayerAttack:new(state_manager)
   self.state_manager = state_manager
   self.current_attack = nil
   self.charging = false
+  self.move_input = vector(0,0)
 end
 
-function PlayerAttack:update(dt)
-  if self.current_attack then self.current_attack:update(dt) end
+function PlayerAttack:update(dt, move_x, move_y)
+  self.move_input = vector(move_x, move_y)
+  if self.current_attack then self.current_attack:update(dt, move_x, move_y) end
 end
 
 -- adds a regular collider, then adds all elements needed for an attack hitbox
@@ -27,12 +29,13 @@ end
 -- @param knockback: knockback inflicted on the enemy
 -- @param kb_signal: a hump signal object that enemies can register functions so they know when to experience knockback
 -- @param kb_wait: the amount of time before knockback is applied to the enemy
-function PlayerAttack:addAttackHitbox(collider, tag, position_function, power, knockback, kb_signal, kb_wait)
-  local hitbox = self.state_manager:addCollider(collider, tag, self.state_manager, position_function) 
-  hitbox.power = power
+function PlayerAttack:addAttackHitbox(collider, position_function, damage, knockback, kb_signal, kb_wait, suspense_time)
+  local hitbox = self.state_manager:addCollider(collider, "PlayerAttack", self.state_manager, position_function) 
+  hitbox.damage = damage
   hitbox.knockback = knockback
   hitbox.kb_signal = kb_signal
   hitbox.kb_wait = kb_wait
+  hitbox.suspense_time = suspense_time
   return hitbox
 end
 

@@ -1,9 +1,10 @@
 Gamestate = require "libs.hump.gamestate"
 Camera = require "libs.hump.camera"
+Stalker = require "libs.STALKER-X.Camera"
 Timer = require "libs.hump.timer"
-gamera = require 'libs.gamera.gamera'
 Object = require "libs.classic.classic"
 Player = require "scripts.player.player_state"
+CameraWrapper = require "scripts.camera.camera"
 e_test = require "scripts.entities.entity_test"
 entity_manager = require "scripts.entity_manager"
 baton = require "libs.baton.baton"
@@ -15,10 +16,13 @@ gscreen.load(3)
 --gscreen.toggle_fullscreen()
 
 et = require "scripts.entities.enemies.enemy_test"
+ebt = require "scripts.entities.enemies.enemy_bounce_test"
 
 --might make this its own class
 --ActiveState = Object:extend()
 --ActiveState.state = game_state
+local NATIVE_RES = {width = 640, height = 360}
+local screen_center = {x = love.graphics.getWidth() / 2, y = love.graphics.getHeight() / 2}
 local p
 local game_state = {}
 local entity_collision = HC.new(100)
@@ -42,6 +46,7 @@ local input = baton.new {
 
 function game_state:enter()
   print(love.graphics.getWidth(), love.graphics.getHeight())
+  math.randomseed(os.time())
   love.graphics.setDefaultFilter("nearest", "nearest", 1)
   love.graphics.setLineStyle("rough")
 
@@ -51,9 +56,20 @@ function game_state:enter()
   local entity_layer = map:addCustomLayer("Entities", 3)
   local test_layer = map:addCustomLayer("Test", 3)
   player_spawnx, player_spawny = map.objects[1].x, map.objects[1].y
-  
-  p = Player(player_spawnx, player_spawny, entity_collision, tile_world)
-  camera = Camera(p.position.x + 200, p.position.y + 200)
+  print(math.floor(player_spawnx + 0.5), math.floor(player_spawny + 0.5))
+  p = Player(math.floor(player_spawnx + 0.5), math.floor(player_spawny + 0.5), entity_collision, tile_world)
+  --p = Player(player_spawnx, player_spawny, entity_collision, tile_world)
+  --camera = Camera(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2)
+  --camera = Camera(NATIVE_RES.width/2, NATIVE_RES.height/2)
+  --camera.smoother = Camera.smooth.damped(30)
+  mycamera = CameraWrapper(player_spawnx, player_spawny, NATIVE_RES, p)
+  --stalker = Stalker(player_spawnx, player_spawny, NATIVE_RES.width, NATIVE_RES.height)
+  --stalker:setFollowStyle('TOPDOWN')
+  --stalker:setFollowLerp(0.2)
+  --stalker:setFollowLead(2)
+  --stalker.draw_deadzone = true
+  --stalker:setDeadzone(40, NATIVE_RES.height/2 - 40, NATIVE_RES.width - 80, 80)
+
   scaling_factor = {s = 1}
 
   --gam = gamera.new(0, 0, 2000, 2000)
@@ -76,7 +92,7 @@ function game_state:enter()
   test_timer = Timer.new()
   
   
-  
+  --[[
   local e_boy = e_test(50, 50)
   e_guy = et(0, 0, entity_collision, tile_world)
   e_gut = et(0, 300, entity_collision, tile_world)
@@ -86,7 +102,10 @@ function game_state:enter()
   e_guq = et(0, 300, entity_collision, tile_world)
   e_guz = et(0, 300, entity_collision, tile_world)
   e_gux = et(0, 300, entity_collision, tile_world)
-  e_guc = et(600, 150, entity_collision, tile_world)
+  --e_guc = et(600, 150, entity_collision, tile_world)
+  bouncy = ebt(900, 80, entity_collision, tile_world)
+  
+  entity_manager:addEntity(bouncy)
   entity_manager:addEntity(e_boy)
   entity_manager:addEntity(e_guy)
   entity_manager:addEntity(e_gut)
@@ -96,7 +115,9 @@ function game_state:enter()
   entity_manager:addEntity(e_guq)
   entity_manager:addEntity(e_guz)
   entity_manager:addEntity(e_gux)
-  entity_manager:addEntity(e_guc)
+  ]]
+  --entity_manager:addEntity(e_guc)
+
   entity_manager:addEntity(p)
 
 
@@ -148,11 +169,21 @@ function game_state:update(dt)
   p:update(dt, movex, movey)
   entity_manager.updateEntities(dt)
   entity_manager:updateRenderOrder()
-  
-  local dx,dy = p.position.x - camera.x, p.position.y - camera.y
-  camera:move(dx, dy)
-  camera:zoomTo(scaling_factor.s)
+  --print('bullshit')
+  --print(camera:cameraCoords(p.position.x, p.position.y, 0, 0, NATIVE_RES.width, NATIVE_RES.height))
+  --print('bringo')
+  --print(p.position.x + NATIVE_RES.width, p.position.y + NATIVE_RES.height)
+  --  camera:lockPosition(p.position.x, p.position.y)
 
+  --camera:lockWindow(p.position.x, p.position.y, dead_zone_left, dead_zone_right, dead_zone_top, dead_zone_bottom, camera.smoother)
+  --camera:lockWindow(p.position.x, p.position.y, NATIVE_RES.width, NATIVE_RES.height, NATIVE_RES.width * 0.25, NATIVE_RES.width * 0.75, NATIVE_RES.height * 0.25, NATIVE_RES.height * 0.75, camera.smoother)
+  mycamera:update(dt)
+  --camera:lockWindow(p.position.x, p.position.y, screen_center.x / 2, screen_center.x + (screen_center.x / 2), screen_center.y / 2, screen_center.y + (screen_center.y / 2), camera.smoother)
+  --local dx,dy = p.position.x - camera.x, p.position.y - camera.y
+  --camera:move(dx, dy)
+  --camera:zoomTo(scaling_factor.s)
+  --stalker:update(dt)
+  --stalker:follow(p.position.x, p.position.y)
   map:update(dt)
   gscreen.update(dt)
   --print('------------')
@@ -163,7 +194,12 @@ function game_state:draw()
   
   gscreen.start()
   --gam:draw(function()
-    camera:attach(0, 0, 1920 / gscreen.scale, 1080 / gscreen.scale, "noclip")
+    --stalker:attach()
+    --camera:attach(0, 0, love.graphics.getWidth() / gscreen.scale, love.graphics.getHeight() / gscreen.scale, "noclip")
+    --camera:attach(0, 0, NATIVE_RES.width, NATIVE_RES.height, "noclip")
+    mycamera:attach()
+    -- these function the same
+    --camera:attach(0, 0, love.graphics.getWidth(), love.graphics.getHeight(), "noclip")
     --camera:attach()
     --love.graphics.draw(test_img, p.position.x, p.position.y)
     --for some reason drawing the player from its own draw method results in weird jumpled sprites, while drawing directly in this method looks fine.
@@ -173,11 +209,15 @@ function game_state:draw()
     --local ty = math.floor(p.position.y - (love.graphics.getHeight() / gscreen.scale) / 2)
     --map:draw(-tx, -ty)
     map:draw()
+    
     --love.graphics.print("Is it working" .. type(Player), 20, 20)
     --p:draw()
     --for _,e in ipairs(entities) do e:draw() end
-    camera:detach()
+    mycamera:detach()
+    mycamera:draw()
   --end)
+  --stalker:detach()
+  --stalker:draw()
   gscreen.stop()
   love.graphics.print("Current FPS: "..tostring(love.timer.getFPS()), 10, 10)
   

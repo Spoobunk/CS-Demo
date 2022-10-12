@@ -35,13 +35,11 @@ function Entity:updateMovement(dt, movementStep)
   if(self.Move and self.tile_collider and self.do_collision) then
     local move_step = movementStep
     local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
-    local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
+    local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisions(item, other) end)
     self.ground_pos = vector(actualX, actualY) + self.tile_collider_offset
-    -- updates the variable that indicates whether an entity is running into a wall horizontally or not
-    --if actualX - goal_pos.x ~= 0 then self.moving_into_wall_x = true else self.moving_into_wall_x = false end 
     self.pos = self.ground_pos - vector(0, self.height)
-    -- rounding position values makes you get stuck on colliders :/
-    --self.pos = vector(math.floor(self.pos.x), math.floor(self.pos.y))
+    
+    self:resolveTileCollisions(cols)
   -- moving without a tile collider
   elseif(self.Move) then
     self.ground_pos = self.ground_pos + movementStep
@@ -51,9 +49,6 @@ function Entity:updateMovement(dt, movementStep)
   self:updateColliderPositions()
   self:resolveCollisions()
   self:updateColliderPositions()
-  
-  --if self.ground_pos.x ~= target_pos.x then self.moving_into_wall_x = true else self.moving_into_wall_x = false end 
-  --print(self.moving_into_wall_x)
 end
 
 -- @param new_pos: a vector representing the new position of the entity
@@ -68,8 +63,11 @@ function Entity:setUpTileCollider(x, y, ox, oy, w, h)
   self.tile_collider_offset = vector(ox, oy)
 end
 
--- function used to resolve tile collisions based on what the function returns
---function Entity:resolveTileCollisions(item, other)
+-- function used to check tile collisions and use preliminary collision resolution options 'slide, bounce'
+-- more advanced collision resolution comes later
+function Entity:checkTileCollisions(item, other)
+  return self:checkTileCollisionForHeight(item, other)
+end
 
 function Entity:checkTileCollisionForHeight(item, other)
   -- disables tile collisions between entities (for now)
@@ -83,16 +81,23 @@ function Entity:checkTileCollisionForHeight(item, other)
   end
 end
 
+-- function that is called right after tile collisions are evaluated
+function Entity:resolveTileCollisions(cols)
+end
+
 -- @param collider: collider object to add
 -- @param tag: string that identifies what the collider represents; collisions are resolved based on this
 -- @param position_function: function that returns a vector, to decide where the position of the collider is
 -- @param (optional) enabled: boolean: collisions are resolved only if this is true. it is true by default.
-function Entity:addCollider(collider, tag, object, position_function, enabled)
+-- @param (optional) affected_by_height: boolean, whether the collider checks that it is not too high when resolving collisions
+function Entity:addCollider(collider, tag, object, position_function, enabled, ignore_height)
   collider.tag = tag
   collider.object = object
   collider.position_function = position_function 
   collider:moveTo(position_function())
   if enabled == nil then collider.enabled = true else collider.enabled = enabled end
+  -- if ignore_height isn't supplied, it will be nil
+  collider.ignore_height = ignore_height
   table.insert(self.colliders, collider)
   return collider
 end
@@ -124,12 +129,16 @@ function Entity:resolveCollisions()
   if not self.do_collision then return false end
   for _,c in ipairs(self.colliders) do
     if self.collision_resolution[c.tag] and c.enabled then
-      local collisions = self.collision_world:collisions(c)
-      for other, separating_vector in pairs(collisions) do
-        if other.object.do_collision and other.enabled and self.collision_resolution[c.tag][other.tag] then 
-          -- this checks the collision_condition table for each entity in the collision. If either condition returns false, than this collision is ignored and neither entity responds
-          local condition_check = (self.collision_condition[c.tag] and self.collision_condition[c.tag][other.tag] and not(self.collision_condition[c.tag][other.tag]())) or (other.object.collision_condition[other.tag] and other.object.collision_condition[other.tag][c.tag] and not(other.object.collision_condition[other.tag][c.tag]()))
-          if not condition_check then self.collision_resolution[c.tag][other.tag](separating_vector, other) end
+      if c.ignore_height or self.height < 50 then
+        local collisions = self.collision_world:collisions(c)
+        for other, separating_vector in pairs(collisions) do
+          if other.object.do_collision and other.enabled and self.collision_resolution[c.tag][other.tag] then
+            if other.ignore_height or other.object.height < 50 then
+              -- this checks the collision_condition table for each entity in the collision. If either condition returns false, than this collision is ignored and neither entity responds
+              local condition_check = (self.collision_condition[c.tag] and self.collision_condition[c.tag][other.tag] and not(self.collision_condition[c.tag][other.tag]())) or (other.object.collision_condition[other.tag] and other.object.collision_condition[other.tag][c.tag] and not(other.object.collision_condition[other.tag][c.tag]()))
+              if not condition_check then self.collision_resolution[c.tag][other.tag](separating_vector, other) end
+            end
+          end
         end
       end
     end
@@ -156,9 +165,9 @@ end
   
 
 function Entity:drawColliders()
-  if not self.do_collision then return false end
+  --if not self.do_collision then return false end
   for _,c in ipairs(self.colliders) do
-    if c.enabled then c:draw() end
+    if c.enabled and (c.ignore_height or self.height < 50) then c:draw() end
   end
 end
 

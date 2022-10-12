@@ -28,7 +28,6 @@ Player.player_states = {
     throwing = require (path_to_states .. "throwing_state"),
     dormant = require (path_to_states .. "dormant_state")
 }
-
 -- fills in the list with the actual state classes
  --for name in pairs(Player.player_states) do
     --player_states[name] = require "scripts.player.player states." .. name
@@ -37,7 +36,7 @@ Player.player_states = {
 -- @param tile_world: world for tilemap collisions
 function Player:new(x, y, collision_world, tile_world)
   Player.super.new(self, x, y, collision_world, tile_world)
-  self.name = "player"
+  self.name = "Player"
   self.current_state = Player.player_states.idle
   local move_component = Move(self)
   local anim_component = Anim(self)
@@ -63,6 +62,8 @@ function Player:new(x, y, collision_world, tile_world)
   -- keeps track of what inputs are being held down
   self.is_holding_input = {attack = false, grab = false, spin = false}
   
+  self.in_suspense = false
+  
   self.cancel_timers = {}
   
   self.collision_world = collision_world
@@ -76,18 +77,11 @@ function Player:new(x, y, collision_world, tile_world)
   self.setUpTileCollider(self, self.position.x, self.position.y, 12, -1, 25, 24)
   
   self.collision_resolution = {
-    Player = {--Test = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y)) end,
+    Player = {--Test = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y), 1700) end,
               Test = function(separating_vector) self:moveTo(self.ground_pos + vector(separating_vector.x, separating_vector.y)) end,
-              --[[{Test = function(separating_vector) if not self.cool then print(separating_vector.y) print(self.position) 
-                  local this_x = self.position.x
-                  local this_y = self.position.y
-                  self:addCollider(self.collision_world:circle(self.position.x, self.position.y, 20), "noddu", self, function() return this_x, this_y end)
-                  self:moveTo(self.position + vector(separating_vector.x, separating_vector.y)) print(self.position) self.cool = true self.player_components.move:Set_Movement_Input(false) self.player_components.move:Set_Movement_Settings(vector(0, 0), vector(0,0), 0, 0, 0) end end,]]
-              --{Test = function(separating_vector) self:moveTo(self.position + vector(separating_vector.x, separating_vector.y)) end,
               Enemy = function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.health:takeDamage(separating_vector, other) end end}
   }
-  -- these are conditions that the collisions resolution system checks before resolving collisions. the conditions of each party is checked. if either returns false, then no resolution is done
-  -- on either party.
+  -- these are conditions that the collisions resolution system checks before resolving collisions. the conditions of each party is checked. if either returns false, then no resolution is done on either party.
   self.collision_condition = {
     Player = {Enemy = function() return self.player_components.health:isVulnerable() end}
   }
@@ -112,7 +106,7 @@ function Player:change_states(to)
 end
 
 function Player:Current_State_Is(state)
-  return self.current_state == Player.player_states[state]
+  return self.current_state == Player.player_states[string.lower(state)]
 end
 
 function Player:Get_Current_State()
@@ -132,6 +126,7 @@ function Player:input_button(action)
     -- ...then calls the function.
     script[action](script)
   end
+
   --[[ bracket notation is used instead of dot notation when indexing tables/calling functions because we are working with parameters here, hence we don't know what value we'll be looking for.
   dot notation only works if the name of the variable matches up with the value we are looking to index.]]
 
@@ -172,14 +167,13 @@ function Player:addCancelTimer(time, condition, action)
   ct.condition = condition
   ct.handle = self.protected_timer:after(time, ct.action)
   table.insert(self.cancel_timers, ct)
-  --print(#self.cancel_timers)
+  return ct
 end
 
 function Player:removeCancelTimer(handle)
   for i, ct in ipairs(self.cancel_timers) do
     if ct.handle == handle then table.remove(self.cancel_timers, i) end
   end
-  --print(#self.cancel_timers)
 end
 
 function Player:updateCancelTimers()
@@ -189,57 +183,74 @@ function Player:updateCancelTimers()
   end
 end
 
+-- @param t number duration of suspense
+-- @param after_func optional function parameter that gets run when suspense is ended
+function Player:setSuspense(t, can_move, after_func)
+  self.in_suspense = true
+  local this_state = self.current_state
+  if can_move then
+    self:addCancelTimer(t, function() return self.current_state == this_state end, function() self.in_suspense = false if after_func then after_func() end end)
+  else
+    self.player_components.move.update_movement = false
+    self:addCancelTimer(t, function() return self.current_state == this_state end, function() self.in_suspense = false self.player_components.move.update_movement = true if after_func then after_func() end end)
+  end
+end
+
 function Player:draw()
   self.player_components.anim:draw(self.position.x, self.position.y)
   --draw box around current frame
   --self.player_components.anim:drawFrameBox(self.position.x, self.position.y)
   
-  self:drawRenderPosition()
+  --self:drawRenderPosition()
   --self:drawTileCollider()
   love.graphics.setColor(255, 0, 0, 1)
   -- drawing absolute position
   love.graphics.points(self.position.x, self.position.y)
   love.graphics.setColor(0, 0, 255, 1)
 
-  self:drawColliders()
+  --self:drawColliders()
   love.graphics.setColor(255, 255, 255, 1)
 end
 
 function Player:update(dt, move_input_x, move_input_y) 
-  for _, component in pairs(self.player_components) do
-    component:update(dt, move_input_x, move_input_y)
+  for name, component in pairs(self.player_components) do
+    if (name == 'attack' or name == 'anim' or name == 'move') and self.in_suspense then 
+
+    else
+      component:update(dt, move_input_x, move_input_y)
+    end
   end
-  
+
   self.protected_timer:update(dt)
   if self.buffered_input and not self.is_buffering_input[self.buffered_input] then self:input_button(self.buffered_input) self.buffered_input = nil end
-  
- --[[ 
-  for _,ct in ipairs(self.cancel_timers) do
-    if not ct.condition() then self.protected_timer:cancel(ct.handle) ct.action() end
-  end
---]]
   self:updateCancelTimers()
     
   local last_pos = self.ground_pos
   
   --player's custom version of the movement segment of Entity.update()
-  local move_step = self.player_components.move:get_movement_step(dt, move_input_x, move_input_y)
-  local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
-  local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
+  --if not self.in_suspense then
+    local move_step = self.player_components.move:get_movement_step(dt, move_input_x, move_input_y)
+    --print(move_step)
+    --move_step = vector(math.floor(move_step.x + 0.5), math.floor(move_step.y + 0.5))
+    --print(move_step)
+    local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
+    local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
   
-  self.ground_pos = vector(actualX, actualY) + self.tile_collider_offset
-  -- this line simply sets the horizontal velocity of the player to 0 whent running into a wall, so when hitting an enemy it doesn't copy the players velocity when running into a wall
-  if actualX - goal_pos.x ~= 0 then self.player_components.move.velocity.x = 0 end
-  self.position = self.ground_pos - vector(0, self.height)
-  self.pos = self.position
-  -- rounding position values makes you get stuck on colliders :/
-  --self.position = vector(math.floor(self.position.x), math.floor(self.position.y))
+    self.ground_pos = vector(actualX, actualY) + self.tile_collider_offset
+    
+    self.position = self.ground_pos - vector(0, self.height)
+    self.pos = self.position
+  --end
   
   self:updateColliderPositions()
   self:resolveCollisions()
   self:updateColliderPositions()
   
+  --self.ground_pos = vector(math.floor(self.ground_pos.x + 0.5), math.floor(self.ground_pos.y + 0.5))
+  self.position = self.ground_pos - vector(0, self.height)
+  self.pos = self.position
   self.current_movestep = self.ground_pos - last_pos
+  --if not self.in_suspense then self.current_movestep = self.ground_pos - last_pos else self.current_movestep = vector(0, 0) end
 end
 
 function Player:getRenderPosition()

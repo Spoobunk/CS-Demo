@@ -16,6 +16,10 @@ function EntityAnim:new(base_offset_x, base_offset_y, anim_folder, atlas_name)
   self.atlas_name = atlas_name
   -- wherever you want the left and bottom of your frames to be, relative to the object's position
   self.image_offset = vector(base_offset_x, base_offset_y)
+  
+  self.sprite_rot = 0
+  self.rot_speed = 0
+  self.anim_timer = Timer.new()
 end
 
 function EntityAnim:Get_Draw_Offset(frameWidth, frameHeight)
@@ -32,6 +36,8 @@ end
 
 function EntityAnim:update(dt)
   self.current_anim:update(dt)
+  self.anim_timer:update(dt)
+  self.sprite_rot = self.sprite_rot + (self.rot_speed * (dt * 10))
 end
 
 function EntityAnim:createGrid(sheet_name)
@@ -60,7 +66,7 @@ end
 function EntityAnim:draw(x, y)
   local offsetX, offsetY = self:Get_Draw_Offset(self.current_anim:getDimensions())
   --local drawn_anim = self.horizontal_flip and self.current_anim else return self.current_anim:flipH() end end
-  self.current_anim:flipH(self.horizontal_flip):draw(self.sheet, x, y, 0, 1, 1, offsetX, offsetY)
+  self.current_anim:flipH(self.horizontal_flip):draw(self.sheet, x, y, self.sprite_rot, 1, 1, offsetX, offsetY)
 end
 
 function EntityAnim:drawFrameBox(x, y)
@@ -100,6 +106,26 @@ end
 -- changes speed of the current animation, doesn't persist after the animation ends.
 function EntityAnim:changeSpeed(duration)
   self.current_anim:newDurations(duration)
+end
+
+-- use this when you want to set the rotation of the entity's sprite AND stop all tweening on the rotation. There are cases where editing the sprite_rot variable directly would make more sense
+function EntityAnim:setRotation(rot)
+  self.anim_timer:clear()
+  self.sprite_rot = rot
+end
+
+function EntityAnim:resetRotation()
+  self.rot_speed = 0
+  -- this all makes it so the enemy rotates in the quickest way to get back to the 360 angle, or no rotation.
+  -- it first finds the value it needs to be rotated by to the right to get back to 360..
+  local missing = self.sprite_rot % (math.pi*2)
+  -- ..then it compares that value with how much it needs to be rotated to the left to get back to 360. The lesser one is take, so the entity always takes the quickest route back to 360.
+  local rot_direction = self.sprite_rot - missing
+  if missing > (math.pi*2 - missing) then
+    rot_direction = self.sprite_rot + (math.pi*2 - missing)
+  end
+  -- quicker rotation resets will probably be better in the future
+  self.anim_timer:tween(0.1, self, {sprite_rot = rot_direction}, 'out-quad', function() sprite_rot = 0 end)
 end
 
 function EntityAnim:getCurrentAnim()

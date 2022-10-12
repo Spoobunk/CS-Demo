@@ -28,6 +28,10 @@ function Entity_Manager:addEntity(e)
   Entity_Manager.updateRenderOrder()
 end
   
-    
+function Entity_Manager:removeEntity(target)
+  for i, e in ipairs(Entity_Manager.entities) do
+    if e == target then table.remove(Entity_Manager.entities, i) end
+  end
+end
   
 return Entity_Manager

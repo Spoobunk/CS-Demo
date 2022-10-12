@@ -7,7 +7,9 @@ function Dormant_State:enter_state(state_manager, from_state)
 end
 
 function Dormant_State.exit(state_manager, to_state)
-  
+  -- this is so if the player exits the 'dormant' state prematurely (like by getting hit), the timer that is supposed to set the player back to idle under normal circumstances will be canceled
+  -- also, do we really need this state???
+  state_manager.player_components.grab.grab_timer:clear()
 end
 
 Dormant_State.input = {

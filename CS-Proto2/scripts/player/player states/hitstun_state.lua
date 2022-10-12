@@ -6,6 +6,7 @@ function HitstunState.enter_state(state_manager, from_state)
     --print(state_manager.buffered_input)
     --state_manager.player_components.attack:
     state_manager.player_components.anim:Switch_Animation('mashready2')
+    --state_manager.player_components.grab:endGrab()
 end
 
 HitstunState.input = {
