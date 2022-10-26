@@ -25,5 +25,8 @@ SpinningState.name = "spinning"
 SpinningState.canMove = true
 SpinningState.vulnerable = false
 SpinningState.flip_sprite_horizontal = false
+SpinningState.moveCamera = 'always'
+SpinningState.moveCameraTarget = true
+SpinningState.moveCameraFocusMethod = 'normal'
 
 return SpinningState

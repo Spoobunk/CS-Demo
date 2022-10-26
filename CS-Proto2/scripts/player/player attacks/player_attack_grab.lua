@@ -13,6 +13,8 @@ function AttackGrab:new(main_class)
   self.move = self.player.player_components.move
   self.grab = self.player.player_components.grab
   self.attack_direction = self.move.face_direction
+  
+  self.player.camera:setTarget(vector(self.attack_direction * self.player.camera.MAX_TARGET_DISTANCE, 0))
 
   AttackGrab.super.new(self)
   self.signal:register('grab-success', function(grabbable) self:onGrab(grabbable) end)

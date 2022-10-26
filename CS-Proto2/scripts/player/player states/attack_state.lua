@@ -29,5 +29,8 @@ Attack_State.name = "attack"
 Attack_State.canMove = false
 Attack_State.vulnerable = true
 Attack_State.flip_sprite_horizontal = false
+Attack_State.moveCamera = 'always'
+Attack_State.moveCameraTarget = false
+Attack_State.moveCameraFocusMethod = 'normal'
 
 return Attack_State

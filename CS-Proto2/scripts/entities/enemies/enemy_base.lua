@@ -192,7 +192,7 @@ function EnemyBase:breakOut(direction)
 end
 
 function EnemyBase:startBreakOutTimer(player)
-  self.grab_breakout_timer:after(3, function() player.player_components.grab:enemyBreakOut(self, 0, 0.5, 400) end)
+  self.grab_breakout_timer:after(100, function() player.player_components.grab:enemyBreakOut(self, 0, 0.5, 400) end)
 end
 
 -- use getmetatable(self) to get the class of an object

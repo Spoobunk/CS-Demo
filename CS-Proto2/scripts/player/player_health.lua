@@ -27,6 +27,7 @@ function PlayerHealth:takeDamage(separating_vector, other_collider)
   local damage = other_collider.damage
   local suspense = other_collider.suspense or damage * 0.01
   local knockback = other_collider.knockback or damage * 1000
+  self.state_manager.camera:setTarget(vector(0.001, 0.001))
   self.state_manager.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y), knockback)
   self.state_manager.player_components.grab:abortGrab(suspense, last_state)
   self.state_manager:setSuspense(suspense, false)

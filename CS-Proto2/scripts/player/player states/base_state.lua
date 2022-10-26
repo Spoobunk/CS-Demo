@@ -19,5 +19,18 @@ Base_State.input = {
 Base_State.name = "base"
 Base_State.canMove = false
 Base_State.vulnerable = true
+-- moveCamera property: three possible values
+-- false : never move camera while in this state
+-- 'with_input' : only move camera when the player is giving movement input
+-- 'always' : move camera no matter what
+Base_State.moveCamera = 'with_input'
+-- moveCameraTarget property: boolean value
+-- true : the camera's target point will be updated based on the player's velocity
+-- false : the camera's target point will not be updated, so it will need to be adjusted explicitly
+Base_State.moveCameraTarget = true
+-- moveCameraFocusMethod: two values
+-- 'normal' : normal focus movement method, speeding up to focus on the player, then gradually moving in the direction of the target
+-- 'fast' : method that speeds towards the target
+Base_State.moveCameraFocusMethod = 'normal'
 
 return Base_State

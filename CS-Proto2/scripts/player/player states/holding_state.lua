@@ -23,5 +23,8 @@ Holding_State.name = "holding"
 Holding_State.canMove = true
 Holding_State.vulnerable = true
 Holding_State.flip_sprite_horizontal = false
+Holding_State.moveCamera = 'with_input'
+Holding_State.moveCameraTarget = true
+Holding_State.moveCameraFocusMethod = 'normal'
 
 return Holding_State

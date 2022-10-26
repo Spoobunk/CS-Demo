@@ -25,5 +25,8 @@ Dormant_State.name = "dormant"
 Dormant_State.canMove = false
 Dormant_State.vulnerable = true
 Dormant_State.flip_sprite_horizontal = false
+Dormant_State.moveCamera = 'always'
+Dormant_State.moveCameraTarget = true
+Dormant_State.moveCameraFocusMethod = 'normal'
 
 return Dormant_State

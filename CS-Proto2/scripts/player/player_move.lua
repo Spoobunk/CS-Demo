@@ -40,6 +40,7 @@ end
 
 function Player_Move:update(dt, axis_x, axis_y) 
   self.move_timer:update(dt)
+  --print(dt)
   
   local input_x = (axis_x == 0 and 0 or axis_x / math.abs( axis_x ))
   local input_y = (axis_y == 0 and 0 or axis_y / math.abs( axis_y ))

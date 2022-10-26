@@ -45,6 +45,7 @@ function PlayerGrab:update(dt)
     if self.state_manager:Current_State_Is('holding') then 
       self.holding:moveTo(vector(self.state_manager.position.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.position.y + 25)) 
       self.throw_dir = vector(self.state_manager.player_components.move.face_direction, 0)
+      
     elseif self.state_manager:Current_State_Is('throwing') then
       local raw_input = self.state_manager.player_components.move.raw_input
       
@@ -58,7 +59,8 @@ function PlayerGrab:update(dt)
           if raw_input.x ~= 0 and raw_input.y ~= 0 then self.aim_diagonal = vector(raw_input.x, raw_input.y) end
 
         end
-       end
+      end
+      self.state_manager.camera:setTarget(self.throw_dir:normalized() * self.state_manager.camera.MAX_TARGET_DISTANCE)
     end
   end
 

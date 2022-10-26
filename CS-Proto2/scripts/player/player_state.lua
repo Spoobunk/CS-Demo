@@ -47,6 +47,8 @@ function Player:new(x, y, collision_world, tile_world)
   self.Move = move_component
   self.Anim = anim_component
   
+  self.camera = nil -- camera reference, set in game_state.lua
+  
   --self.img = love.graphics.newImage("assets/basic/sprites/player/stuba test.png")
   self.position = vector(x, y) or vector(0, 0)
   self.ground_pos = self.position

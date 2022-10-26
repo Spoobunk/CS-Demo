@@ -25,5 +25,8 @@ Grabbing_State.name = "grabbing"
 Grabbing_State.canMove = false
 Grabbing_State.vulnerable = true
 Grabbing_State.flip_sprite_horizontal = false
+Grabbing_State.moveCamera = 'always'
+Grabbing_State.moveCameraTarget = false
+Grabbing_State.moveCameraFocusMethod = 'normal'
 
 return Grabbing_State

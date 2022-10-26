@@ -36,10 +36,15 @@ local input = baton.new {
     down = {'key:down', 'key:s', 'axis:lefty+', 'button:dpdown'},
     attack = {'key:z', 'key:j', 'button:x'},
     spin = {'key:x', 'key:k', 'button:a'},
-    grab = {'key:c', 'key:l', 'axis:triggerleft+', 'axis:triggerright+'}
+    grab = {'key:c', 'key:l', 'axis:triggerleft+', 'axis:triggerright+'},
+    lookLeft = {'key:f', 'axis:rightx-'},
+    lookRight = {'key:h', 'axis:rightx+'},
+    lookUp = {'key:t', 'axis:righty-'},
+    lookDown = {'key:g', 'axis:righty+'},
   },
   pairs = {
-    move = {'left', 'right', 'up', 'down'}
+    move = {'left', 'right', 'up', 'down'},
+    look = {'lookLeft', 'lookRight', 'lookUp', 'lookDown'}
   },
   joystick = love.joystick.getJoysticks()[1],
 }
@@ -63,6 +68,7 @@ function game_state:enter()
   --camera = Camera(NATIVE_RES.width/2, NATIVE_RES.height/2)
   --camera.smoother = Camera.smooth.damped(30)
   mycamera = CameraWrapper(player_spawnx, player_spawny, NATIVE_RES, p)
+  p.camera = mycamera
   --stalker = Stalker(player_spawnx, player_spawny, NATIVE_RES.width, NATIVE_RES.height)
   --stalker:setFollowStyle('TOPDOWN')
   --stalker:setFollowLerp(0.2)
@@ -92,7 +98,7 @@ function game_state:enter()
   test_timer = Timer.new()
   
   
-  --[[
+  
   local e_boy = e_test(50, 50)
   e_guy = et(0, 0, entity_collision, tile_world)
   e_gut = et(0, 300, entity_collision, tile_world)
@@ -115,7 +121,7 @@ function game_state:enter()
   entity_manager:addEntity(e_guq)
   entity_manager:addEntity(e_guz)
   entity_manager:addEntity(e_gux)
-  ]]
+  
   --entity_manager:addEntity(e_guc)
 
   entity_manager:addEntity(p)
@@ -134,6 +140,7 @@ function game_state:update(dt)
   
   if input:pressed('attack') then
     p:input_button('attack')
+    --mycamera:checkTarget()
   end
   
   if input:released('attack') then
@@ -165,6 +172,7 @@ function game_state:update(dt)
   end
   
   movex, movey = input:get('move')
+  local lookx, looky = input:get('look')
   
   p:update(dt, movex, movey)
   entity_manager.updateEntities(dt)
@@ -177,7 +185,7 @@ function game_state:update(dt)
 
   --camera:lockWindow(p.position.x, p.position.y, dead_zone_left, dead_zone_right, dead_zone_top, dead_zone_bottom, camera.smoother)
   --camera:lockWindow(p.position.x, p.position.y, NATIVE_RES.width, NATIVE_RES.height, NATIVE_RES.width * 0.25, NATIVE_RES.width * 0.75, NATIVE_RES.height * 0.25, NATIVE_RES.height * 0.75, camera.smoother)
-  mycamera:update(dt)
+  mycamera:update(dt, lookx, looky)
   --camera:lockWindow(p.position.x, p.position.y, screen_center.x / 2, screen_center.x + (screen_center.x / 2), screen_center.y / 2, screen_center.y + (screen_center.y / 2), camera.smoother)
   --local dx,dy = p.position.x - camera.x, p.position.y - camera.y
   --camera:move(dx, dy)

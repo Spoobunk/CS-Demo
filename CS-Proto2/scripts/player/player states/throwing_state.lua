@@ -23,5 +23,8 @@ Throwing_State.name = "throwing"
 Throwing_State.canMove = false
 Throwing_State.vulnerable = true
 Throwing_State.flip_sprite_horizontal = false
+Throwing_State.moveCamera = 'always'
+Throwing_State.moveCameraTarget = false
+Throwing_State.moveCameraFocusMethod = 'fast'
 
 return Throwing_State
