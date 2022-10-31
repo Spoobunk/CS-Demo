@@ -16,7 +16,7 @@ function AttackMash:new(main_class)
   self.accepting_input = false
   self.pushed_back = false
   
-  self.player.camera:setTarget(vector(self.attack_direction * self.player.camera.MAX_TARGET_DISTANCE, 0))
+  self.player.camera:setTarget(self.player.camera:ellipsify(vector(self.attack_direction * self.player.camera.MAX_TARGET_DISTANCE, 0)))
 
   AttackMash.super.new(self)
   self.signal:register('hit-confirm', function() self:onHit() end)

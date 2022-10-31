@@ -41,6 +41,7 @@ function PlayerHealth:takeDirectDamage(damage, sus, kb_pow, knockback_dir)
   self.state_manager:change_states('hitstun')
   local suspense = sus or damage * 0.01
   local knockback_pow = kb_pow or damage * 1000
+  self.state_manager.camera:setTarget(vector(0.001, 0.001))
   self.state_manager.player_components.move:Damaged_Knockback(knockback_dir, knockback_pow)
   self.state_manager.player_components.grab:abortGrab(suspense, last_state)
   self.state_manager:setSuspense(suspense, false)

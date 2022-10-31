@@ -34,8 +34,8 @@ local input = baton.new {
     right = {'key:right', 'key:d', 'axis:leftx+', 'button:dpright'},
     up = {'key:up', 'key:w', 'axis:lefty-', 'button:dpup'},
     down = {'key:down', 'key:s', 'axis:lefty+', 'button:dpdown'},
-    attack = {'key:z', 'key:j', 'button:x'},
-    spin = {'key:x', 'key:k', 'button:a'},
+    attack = {'key:z', 'key:j', 'button:y'},
+    spin = {'key:x', 'key:k', 'button:b'},
     grab = {'key:c', 'key:l', 'axis:triggerleft+', 'axis:triggerright+'},
     lookLeft = {'key:f', 'axis:rightx-'},
     lookRight = {'key:h', 'axis:rightx+'},
@@ -140,11 +140,12 @@ function game_state:update(dt)
   
   if input:pressed('attack') then
     p:input_button('attack')
-    --mycamera:checkTarget()
+    --mycamera:lockCamera()
   end
   
   if input:released('attack') then
     p:input_button('release_attack')
+    --mycamera:releaseCamera()
   end
   
   if input:pressed('spin') then
@@ -172,6 +173,7 @@ function game_state:update(dt)
   end
   
   movex, movey = input:get('move')
+  
   local lookx, looky = input:get('look')
   
   p:update(dt, movex, movey)

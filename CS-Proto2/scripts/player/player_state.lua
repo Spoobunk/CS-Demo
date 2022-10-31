@@ -72,16 +72,19 @@ function Player:new(x, y, collision_world, tile_world)
   self.collider = self.collision_world:circle(self.position.x, self.position.y, 20)
   self.test_guy = self.collision_world:rectangle(400, 400, 100, 100)
   self.test_guy2 = self.collision_world:circle(100, 300, 100)
+  self.lock_test = self.collision_world:rectangle(700, -500, 100, 100)
   self:addCollider(self.collider, "Player", self, function() return self.ground_pos:unpack() end)
   self:addCollider(self.test_guy, "Reflect", self, function() return 400, 0 end)
-  self:addCollider(self.test_guy2, "Test", self, function() return 100, 300 end)
+  self:addCollider(self.test_guy2, "Test", self, function() return 100, 300 end) 
+  self:addCollider(self.lock_test, "CameraLock", self, function() return 700, -500 end) 
 
   self.setUpTileCollider(self, self.position.x, self.position.y, 12, -1, 25, 24)
   
   self.collision_resolution = {
     Player = {--Test = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y), 1700) end,
               Test = function(separating_vector) self:moveTo(self.ground_pos + vector(separating_vector.x, separating_vector.y)) end,
-              Enemy = function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.health:takeDamage(separating_vector, other) end end}
+              Enemy = function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.health:takeDamage(separating_vector, other) end end,
+              CameraLock = function(separating_vector, other) self.camera:lockCamera(900, nil) end}
   }
   -- these are conditions that the collisions resolution system checks before resolving collisions. the conditions of each party is checked. if either returns false, then no resolution is done on either party.
   self.collision_condition = {
@@ -210,7 +213,7 @@ function Player:draw()
   love.graphics.points(self.position.x, self.position.y)
   love.graphics.setColor(0, 0, 255, 1)
 
-  --self:drawColliders()
+  self:drawColliders()
   love.graphics.setColor(255, 255, 255, 1)
 end
 
@@ -243,6 +246,8 @@ function Player:update(dt, move_input_x, move_input_y)
     self.position = self.ground_pos - vector(0, self.height)
     self.pos = self.position
   --end
+  
+  self.camera:releaseCamera()
   
   self:updateColliderPositions()
   self:resolveCollisions()
