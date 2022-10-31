@@ -13,7 +13,7 @@ HC = require "libs.hardoncollider"
 STI = require "libs.STI.sti"
 gscreen = require "libs.pixel.pixel"
 gscreen.load(3)
---gscreen.toggle_fullscreen()
+gscreen.toggle_fullscreen()
 
 et = require "scripts.entities.enemies.enemy_test"
 ebt = require "scripts.entities.enemies.enemy_bounce_test"
@@ -222,7 +222,7 @@ function game_state:draw()
     --p:draw()
     --for _,e in ipairs(entities) do e:draw() end
     mycamera:detach()
-    mycamera:draw()
+    --mycamera:draw()
   --end)
   --stalker:detach()
   --stalker:draw()
