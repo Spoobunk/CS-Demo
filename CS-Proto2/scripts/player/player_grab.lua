@@ -48,19 +48,20 @@ function PlayerGrab:update(dt)
       
     elseif self.state_manager:Current_State_Is('throwing') then
       local raw_input = self.state_manager.player_components.move.raw_input
+      local digital_input = self.state_manager.player_components.move.digital_input
       
       if self.can_aim and (raw_input.x ~= 0 or raw_input.y ~= 0) then
         -- weird shit I wrote so that when you do a diagonal direction, it ignores inputs and sticks there for a bit. This is so that when you want to point in a diagonal direction, it doesn't switch back to a cardinal direction once you stop holding the buttons, if you release then fast enough.
-        if self.aim_diagonal and (self.aim_diagonal.x ~= raw_input.x or self.aim_diagonal.y ~= raw_input.y) then self.can_aim = false self.grab_timer:after(0.01, function() self.aim_diagonal = nil self.can_aim = true end) else      
+        if self.aim_diagonal and (self.aim_diagonal.x ~= digital_input.x or self.aim_diagonal.y ~= digital_input.y) then self.can_aim = false self.grab_timer:after(0.01, function() self.aim_diagonal = nil self.can_aim = true end) else      
           
           local hold_pos = raw_input:rotated(math.pi)
           self.holding:moveTo(vector(self.state_manager.position.x + (60 * hold_pos.x), self.state_manager.position.y + (60 * hold_pos.y)))
           self.throw_dir = raw_input
-          if raw_input.x ~= 0 and raw_input.y ~= 0 then self.aim_diagonal = vector(raw_input.x, raw_input.y) end
+          if raw_input.x ~= 0 and raw_input.y ~= 0 then self.aim_diagonal = digital_input:clone() end
 
         end
       end
-      self.state_manager.camera:setTarget(self.throw_dir:normalized() * self.state_manager.camera.MAX_TARGET_DISTANCE)
+      self.state_manager.camera:setTarget(self.throw_dir:normalized() * self.state_manager.camera.AIM_LOOKAHEAD_DISTANCE)
     end
   end
 

@@ -15,6 +15,8 @@ function Player_Move:new(state_manager)
   self.face_direction = 1
   -- digital vector keeping track of movement input at any given moment
   self.raw_input = vector(0,0)
+  -- digital representation of movement input, for analog input it is approximated
+  self.digital_input = vector(0,0)
   -- vector keeps track of latest movement input (it is never 0)
   self.last_input = vector(1,1)
     
@@ -40,11 +42,19 @@ end
 
 function Player_Move:update(dt, axis_x, axis_y) 
   self.move_timer:update(dt)
-  --print(dt)
   
+  self.raw_input = vector(axis_x, axis_y)
   local input_x = (axis_x == 0 and 0 or axis_x / math.abs( axis_x ))
   local input_y = (axis_y == 0 and 0 or axis_y / math.abs( axis_y ))
-  self.raw_input = vector(input_x, input_y)
+  
+  local angle_simple = self.raw_input:normalized():angleTo(vector(1,0)) / math.rad(45)
+  local digital_angle = (math.floor(math.abs(angle_simple) + 0.5) * utilities.sign(angle_simple)) * math.rad(45)
+  self.digital_input = self.raw_input == vector(0,0) and vector(0,0) or vector.fromPolar(digital_angle)
+  -- just cleaning up the digital input vector
+  if math.abs(self.digital_input.x) < 0.001 then self.digital_input.x = 0 end
+  if math.abs(self.digital_input.y) < 0.001 then self.digital_input.y = 0 end
+  self.digital_input = vector(utilities.sign(self.digital_input.x), utilities.sign(self.digital_input.y))
+
   -- technically I could replace face_direction with last_input.x
   self.last_input = vector(input_x ~= 0 and input_x or self.last_input.x, input_y ~= 0 and input_y or self.last_input.y)
   self.face_direction = input_x ~= 0 and input_x or self.face_direction
@@ -53,11 +63,11 @@ function Player_Move:update(dt, axis_x, axis_y)
   -- does running animation
   if(self.state_manager:Current_State_Is("idle")) then
     local anim = self.state_manager.player_components.anim
-    if input_x == 0 and input_y == 0 then
+    if self.digital_input.x == 0 and self.digital_input.y == 0 then
       anim:Switch_Animation(anim.idle_anim)
     else
-      anim:Switch_Animation(anim.walk_anim_matrix[2+input_y][2+input_x])
-      anim.idle_anim = anim.idle_anim_matrix[2+input_y][2+input_x]
+      anim:Switch_Animation(anim.walk_anim_matrix[2+self.digital_input.y][2+self.digital_input.x])
+      anim.idle_anim = anim.idle_anim_matrix[2+self.digital_input.y][2+self.digital_input.x]
     end
   end
 end
@@ -160,7 +170,6 @@ end
 function Player_Move:dodgeSpinCooldown()
   self.can_dodge_spin = false
   self.state_manager:addCancelTimer(0.12, function() return self.state_manager:Current_State_Is('idle') end, function() self.can_dodge_spin = true self.state_manager:setInputBuffering('spin', false) end)
-  --self.move_timer:after(0.9, function() self.can_dodge_spin = true self.state_manager:setInputBuffering('spin', false) end)
 end
 
 
