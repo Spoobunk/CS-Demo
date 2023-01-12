@@ -13,10 +13,11 @@ HC = require "libs.hardoncollider"
 STI = require "libs.STI.sti"
 gscreen = require "libs.pixel.pixel"
 gscreen.load(3)
-gscreen.toggle_fullscreen()
+--gscreen.toggle_fullscreen()
 
 et = require "scripts.entities.enemies.enemy_test"
 ebt = require "scripts.entities.enemies.enemy_bounce_test"
+ot = require "scripts.entities.object_test"
 
 --might make this its own class
 --ActiveState = Object:extend()
@@ -100,6 +101,7 @@ function game_state:enter()
   
   
   local e_boy = e_test(50, 50)
+  local o_boy = ot(100, -50,  entity_collision, tile_world)
   e_guy = et(0, 0, entity_collision, tile_world)
   e_gut = et(0, 300, entity_collision, tile_world)
   e_gur = et(0, 300, entity_collision, tile_world)
@@ -122,6 +124,7 @@ function game_state:enter()
   entity_manager:addEntity(e_guz)
   entity_manager:addEntity(e_gux)
   
+  entity_manager:addEntity(o_boy)
   --entity_manager:addEntity(e_guc)
 
   entity_manager:addEntity(p)
@@ -135,12 +138,12 @@ end
 --end
 
 function game_state:update(dt)
+  if not input.config.joystick then input.config.joystick = love.joystick.getJoysticks()[1] end
   input:update()
   test_timer:update(dt)
   
   if input:pressed('attack') then
     p:input_button('attack')
-    --mycamera:lockCamera()
   end
   
   if input:released('attack') then
@@ -223,6 +226,7 @@ function game_state:draw()
     --love.graphics.print("Is it working" .. type(Player), 20, 20)
     --p:draw()
     --for _,e in ipairs(entities) do e:draw() end
+    --mycamera:drawCameraBounds()
     mycamera:detach()
     --mycamera:draw()
   --end)

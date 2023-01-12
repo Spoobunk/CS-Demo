@@ -18,16 +18,23 @@ function CameraWrapper:new(starting_x, starting_y, native_res, player)
   -- the maximum distance from the player the target can be at, in camera coords
   self.focus_target = vector(0,0)
   -- the maximum distance the target can be from the player
-  self.MAX_TARGET_DISTANCE = 80
+  self.MAX_TARGET_DISTANCE = 60
   -- the speed at which the focus moves towards the target when moving at a steady rate
+  -- not currently used
   self.STEADY_FOCUS_SPEED = 20
   -- how fast the focus should speed through the first bit of distance towards the target
+  -- not currently used
   self.EXTRA_LOOKAHEAD = 60
   -- the distance the player can see ahead when they are aiming a throw
   self.AIM_LOOKAHEAD_DISTANCE = 90
   
-  self.origin = self.player.position:clone()
-  self.origin_target = self.player.position:clone()
+  -- the speed the focus should move at when distance from the target is 0
+  self.BASE_LOOKAHEAD_SPEED = 13
+  -- the distance that the player should be able to see when looking with the right stick
+  self.LOOK_DISTANCE = 150
+  
+  self.origin = self.player.ground_pos - vector(0, self.player.base_height)
+  self.origin_target = self.origin:clone()
   self.locked_x = nil
   self.locked_y = nil
   self.origin_locked = true
@@ -35,15 +42,19 @@ function CameraWrapper:new(starting_x, starting_y, native_res, player)
   self.last_locked_y = nil
   self.origin_distance_to_target = vector(0,0)
   
-  self.deadzone = {x1 = self.NATIVE_RES.width/2 - 50, x2 = self.NATIVE_RES.width/2 + 50, y1 = self.NATIVE_RES.height/2 - 25, y2 = self.NATIVE_RES.height/2 + 25}
+  -- vector representing the displacement of the origin when looking with the right stick
+  self.origin_look_distance = vector(0,0)
   
-  self.test_target = vector(517, 107)
+  self.current_bounds = {x1 = -1200, x2 = 1500, y1 = -1200, y2 = 1500}
+  self.deadzone = {x1 = self.NATIVE_RES.width/2 - 15, x2 = self.NATIVE_RES.width/2 + 15, y1 = self.NATIVE_RES.height/2 - 10, y2 = self.NATIVE_RES.height/2 + 10}
+  
+  self.current_shudder = nil
 end
 
 function CameraWrapper:update(dt, lookx, looky)
   -- will this cause problems?
   --self.focus= self.player.position
- 
+  self:updateOrigin(dt, vector(lookx, looky))
   self:updateTarget(dt, vector(lookx, looky))
   --print(self.player.position)
   --self.test_target = self.test_target + vector(0.002, 0)
@@ -52,16 +63,21 @@ function CameraWrapper:update(dt, lookx, looky)
   --self.camera:lockPosition((self.player.position):unpack())
   --self.camera:lockPosition((self.player.position + self.focus):unpack())
   --self.origin = self.player.position:clone()
-  self:updateOrigin(dt)
-  
-  self.camera:lockPosition((self.origin + self.focus):unpack())
-  --self.camera:lockPosition((self.player.position + vector(math.floor(self.focus.x + 0.5), math.floor(self.focus.y + 0.5))):unpack())
-  --self.camera:lockWindow(self.focus.x, self.focus.y, self.NATIVE_RES.width, self.NATIVE_RES.height, self.deadzone.x1, self.deadzone.x2, self.deadzone.y1, self.deadzone.y2, self.camera.smoother)
+  local new_camera_pos = self.origin + self.focus
+  if self.current_shudder then 
+    self.current_shudder:update(dt) 
+    --self.camera:lockPosition(((self.origin + self.current_shudder:amplitude()) + self.focus):unpack())
+    new_camera_pos = new_camera_pos + self.current_shudder:amplitude()
+    if not self.current_shudder.isShuddering then self.current_shudder = nil end
+  end
+  self.camera:lockPosition(new_camera_pos:unpack())
+  --self.camera:lockWindow(new_camera_pos.x, new_camera_pos.y, self.NATIVE_RES.width, self.NATIVE_RES.height, self.deadzone.x1, self.deadzone.x2, self.deadzone.y1, self.deadzone.y2, self.camera.smoother)
 end
 
 function CameraWrapper:updateTarget(dt, look)
   -- look argument is an axis tied to the right stick. leaving here in case I ever want to try to add that look feature
-  if self.player.current_state.moveCamera == 'always' or (self.player.current_state.moveCamera == 'with_input' and self.player.player_components.move.raw_input:len() > 0.001) then  
+  --if self.player.current_state.moveCamera == 'always' or (self.player.current_state.moveCamera == 'with_input' and self.player.player_components.move.raw_input:len() > 0.001 and self.player.current_movestep:len() > 0.1) then  
+  if self.player.current_state.moveCamera == 'always' or (self.player.current_state.moveCamera == 'with_movement' and self.player.current_movestep:len() > 0.5) then  
     if self.player.current_state.moveCameraTarget then 
       local player_vel = self.player.player_components.move.velocity:clone()
       --player_vel = vector(math.floor((player_vel.x * 10) + 0.5) / 10, math.floor((player_vel.y * 10) + 0.5) / 10)
@@ -86,62 +102,141 @@ function CameraWrapper:updateTarget(dt, look)
     self.focus_distance_to_target = self.focus - self.focus_target
     if self.focus_distance_to_target:len() < 1 then self.focus = self.focus_target end
 
-    if self.player.current_state.moveCameraFocusMethod == 'normal' then self:moveSilly() 
+    if self.player.current_state.moveCameraFocusMethod == 'normal' then self:moveNatural() 
     elseif self.player.current_state.moveCameraFocusMethod == 'fast' then self:moveFast() 
+    -- not currently being used by any player state
     elseif self.player.current_state.moveCameraFocusMethod == 'direct' then self:moveDirect() end
       
-    self.focus = self.focus + (self.focus_velocity * dt)
+    --self.focus = self.focus + (self.focus_velocity * dt)
+    self:setFocus(self.focus + (self.focus_velocity * dt))
   end
   
 end
 
-function CameraWrapper:updateOrigin(dt)
+-- I just realized that this whole origin thing would have been so much easier if I just thought to make the origin vector relative to the player, rather than in world coordinates. oh well, it works alright as it is
+function CameraWrapper:updateOrigin(dt, look_vector)
   if (not (type(self.locked_x) == 'number' or type(self.locked_x) == 'nil')) or (not (type(self.locked_y) == 'number' or type(self.locked_y) == 'nil')) then
     error('A invalid value was entered for camera lock coordinates.')
   end
-  
+  --if look_vector:len() > 0.001 then self:lockCamera((self.player.position:clone() + (look_vector:normalized() * self.LOOK_DISTANCE)):unpack()) end
+
   -- this checks to see if the player has entered or exited a camera lock area, resulting in a new origin target.
   if self.locked_x ~= self.last_locked_x or self.locked_y ~= self.last_locked_y then 
     -- print('new target: ' .. (self.locked_x or 'player x') .. ', ' .. (self.locked_y or 'player y'))
     -- if there is a new origin target, the origin lock is disabled, so the origin can move towards the origin target
     self.origin_locked = false 
-    self.origin_target = vector(self.locked_x or self.player.position.x, self.locked_y or self.player.position.y)
+    self.origin_target = vector(self.locked_x or self:findPlayersOrigin(look_vector, dt).x, self.locked_y or self:findPlayersOrigin(look_vector, dt).y)
     -- the distance to the new origin target is found only once, the first time the new target appears.
     self.origin_distance_to_target = self.origin - self.origin_target
   end
   
-  self.origin_target = vector(self.locked_x or self.player.position.x, self.locked_y or self.player.position.y)
+  self.origin_target = vector(self.locked_x or self:findPlayersOrigin(look_vector, dt).x, self.locked_y or self:findPlayersOrigin(look_vector, dt).y)
   -- if the origin lock is enabled, then the origin is always set to the target. But if it is disabled..
-  if self.origin_locked then self.origin = self.origin_target else 
+  if self.origin_locked then self:setOrigin(self.origin_target) else 
     
     -- with this process, instead of the origin moving towards the target, the distance FROM the target to the origin is reduced. I did this so that with a moving target, such as the player, the origin can always catch up to the target, no matter how fast the target is moving.
     local speed = math.min(self.origin_distance_to_target:len() / 200, 1) * 900 + 10
     self.origin_distance_to_target = self.origin_distance_to_target:normalized() * (self.origin_distance_to_target:len() - (speed*dt))
     
     if self.origin_distance_to_target:len() < 1 then 
-      self.origin = self.origin_target 
+      self:setOrigin(self.origin_target) 
       self.origin_locked = true
       --print('locked')
     end
-    
-    self.origin = self.origin_target + self.origin_distance_to_target
+  
+    self:setOrigin(self.origin_target + self.origin_distance_to_target)
   end
   -- we save the locked variables from this frame so that we can check to see if anything has changed next frame.
   self.last_locked_x, self.last_locked_y = self.locked_x, self.locked_y
 end
 
+-- this function finds the origin that should be used by the camera when following the player. this is normally just the player's position, but it changes if the player is using the right stick to look around
+function CameraWrapper:findPlayersOrigin(look_vector, dt)
+  local origin_look_distance_target = vector(0,0)
+
+  if look_vector:len() > 0.001 and self.player:Get_Current_State() ~= 'throwing' then
+    origin_look_distance_target = self:ellipsify(look_vector:normalized() * self.LOOK_DISTANCE)
+  end
+  local distance_to_target = self.origin_look_distance - origin_look_distance_target
+  if distance_to_target:len() < 2 then 
+    self.origin_look_distance = origin_look_distance_target 
+    return self.player.ground_pos - vector(0, self.player.base_height) + self.origin_look_distance
+  end
+  local speed = math.min(distance_to_target:len() / (self.LOOK_DISTANCE*2), 1) * 600 + 20
+  local new_velocity = -distance_to_target:normalized() * speed
+  self.origin_look_distance = self.origin_look_distance + (new_velocity * dt)
+  return self.player.ground_pos - vector(0, self.player.base_height) + self.origin_look_distance
+end
+  
+
+function CameraWrapper:setFocus(new_value)
+  local is_out = self:checkCameraBounds(self.origin + new_value)
+  if is_out.x == -1 then 
+    self.focus.x = (self.current_bounds.x1 + (self.NATIVE_RES.width/2)) - self.origin.x
+  elseif is_out.x == 1 then 
+    self.focus.x = (self.current_bounds.x2 - (self.NATIVE_RES.width/2)) - self.origin.x
+  else
+    self.focus.x = new_value.x
+  end
+
+  if is_out.y == -1 then 
+    self.focus.y = (self.current_bounds.y1 + (self.NATIVE_RES.height/2)) - self.origin.y 
+  elseif is_out.y == 1 then
+    self.focus.y = (self.current_bounds.y2 - (self.NATIVE_RES.height/2)) - self.origin.y 
+  else
+    self.focus.y = new_value.y
+  end
+end
+
+function CameraWrapper:setTarget(new_value)
+  local after_origin_check = vector(0,0)
+  if self.origin.x == (self.player.ground_pos - vector(0, self.player.base_height)).x then
+    after_origin_check.x = new_value.x
+  end
+  if self.origin.y == (self.player.ground_pos - vector(0, self.player.base_height)).y then
+    after_origin_check.y = new_value.y
+  end
+  self.focus_target = after_origin_check
+end
+
+function CameraWrapper:setOrigin(new_value)
+  local is_out = self:checkCameraBounds(new_value)
+  if is_out.x == -1 then 
+    self.origin.x = self.current_bounds.x1 + (self.NATIVE_RES.width/2)
+  elseif is_out.x == 1 then 
+    self.origin.x = self.current_bounds.x2 - (self.NATIVE_RES.width/2)
+  else
+    self.origin.x = new_value.x
+  end
+
+  if is_out.y == -1 then 
+    self.origin.y = self.current_bounds.y1 + (self.NATIVE_RES.height/2)
+  elseif is_out.y == 1 then
+    self.origin.y = self.current_bounds.y2 - (self.NATIVE_RES.height/2)
+  else
+    self.origin.y = new_value.y
+  end
+end
+
+function CameraWrapper:checkCameraBounds(camera_pos)
+  -- this vector tracks if camera_pos is out of bounds on the x and y axes, and in what direction (1 for down or right, -1 for up or left, 0 for within bounds)
+  local is_out = vector(0,0)
+  if camera_pos.x - (self.NATIVE_RES.width/2) < self.current_bounds.x1 then is_out.x = -1 end
+  if camera_pos.x + (self.NATIVE_RES.width/2) > self.current_bounds.x2 then is_out.x = 1 end
+  if camera_pos.y - (self.NATIVE_RES.height/2) < self.current_bounds.y1 then is_out.y = -1 end
+  if camera_pos.y + (self.NATIVE_RES.height/2) > self.current_bounds.y2 then is_out.y = 1 end
+  return is_out
+end
+
 function CameraWrapper:ellipsify(target)
   -- this turns the circle as described by focus_target vector into an ellipse, using the ellipse equation: x^2/a^2 + y^2/b^2 = 1
   -- the magic number 0.5625 is 9/16; maybe I should change this for different aspect ratios
-  local new_target = target:clone()
+  --[[local new_target = target:clone()
   local y_sign = utilities.sign(new_target.y)
-  local new_y = math.sqrt((new_target:len()^2 - new_target.x^2) * (0.5625^2)) * y_sign
+  local new_y = math.sqrt((new_target:len()^2 - new_target.x^2) * (0.8^2)) * y_sign
   new_target.y = new_y
-  return new_target
-end
-
-function CameraWrapper:setTarget(target)
-  self.focus_target = target
+  return new_target]]
+  return utilities.ellipsify(target, 0.8)
 end
 
 -- remember to use the nil keyword if you want to skip an argument
@@ -204,7 +299,7 @@ function CameraWrapper:moveSilly(dt)
   -- the above value represents the distance as a straight line: the below is slanted. either work, though.
   --local perpendistance = -(self.focus - (self.focus_target:normalized() * self.focus:len()))
   -- the farther away the focus is from the target line, the faster it will move toward it, perpendicularly. 
-  local per_speed = math.min(perpendistance:len() / self.MAX_TARGET_DISTANCE, 1) * 150 + 10
+  local per_speed = math.min(perpendistance:len() / self.MAX_TARGET_DISTANCE, 1) * 300 + 5
   local perpendicular = perpendistance:normalized() * per_speed
   
   -- if parallel needs to catch up, it will go faster the further it is away
@@ -212,6 +307,47 @@ function CameraWrapper:moveSilly(dt)
   if self.focus_target * projected < 0 then
     -- finds speed of parallel axis based on how far the projected vector is from being pointed in the right direction
     local par_speed = math.min(projected:len() / self.MAX_TARGET_DISTANCE, 1) * 230 + (self.STEADY_FOCUS_SPEED + self.EXTRA_LOOKAHEAD)
+    -- sets the new parallel axis
+    parallel = self.focus_target:normalized() * par_speed
+  end
+  -- the movement vector is a mix of parallel and perpendicular vectors.
+  --local mixed_vector = parallel - (parallel - perpendicular)/2
+  --if mixed_vector:len() < self.STEADY_FOCUS_SPEED then mixed_vector = mixed_vector:normalizeInplace() * self.STEADY_FOCUS_SPEED end
+  local mixed_vector = parallel + perpendicular
+  self.focus_velocity = mixed_vector
+  
+  local distance_to_line = (self.focus - projected)
+  if distance_to_line:len() < 1 then self.focus_velocity = parallel end
+ end 
+ 
+ function CameraWrapper:moveNatural(dt)
+  local projected = self.focus_target == vector(0,0) and vector(0,0) or self.focus:projectOn(self.focus_target)
+  -- paradistance is the distance between the focus and the target along the parallel axis
+  local paradistance = self.focus_target - projected
+  -- two vectors: one parallel to the target vector, and one perpendicular; they are combined to get the movement vector at the end.
+  --local parallel = self.focus_target:normalized() * self.STEADY_FOCUS_SPEED
+  --the line above makes it so parallel movement speed is constant
+  --the line below makes the parallel movement speed a bit faster when just starting out, then slowing down into the steady, constant speed. It's just so the player always can see at least a little bit in front of themselves.
+  --local parallel = self.focus_target:normalized() * (math.min(math.max(paradistance:len() - (self.focus_target:len()*0.6), 0) / (self.focus_target:len()*0.4), 1) * self.EXTRA_LOOKAHEAD + self.STEADY_FOCUS_SPEED)
+  local par_speed = math.min(paradistance:len() / self.focus_target:len(), 1) * 30 + self.BASE_LOOKAHEAD_SPEED
+  local parallel = paradistance:normalized() * par_speed
+  -- if the focus is already in line with the target perpendicularly, the parallel vector will be set to 0.
+  if (self.focus_target - projected):len() < 1 then parallel = paradistance:normalized() * 0 end
+  
+  --if self.focus_target - self.focus:projectOn(self.focus_target)
+  -- perpendistance is the distance between the focus and the target line; the farther away the focus is from the target line, the faster it will move toward it, perpendicularly. 
+  local perpendistance = -(self.focus - projected)
+  -- the above value represents the distance as a straight line: the below is slanted. either work, though.
+  --local perpendistance = -(self.focus - (self.focus_target:normalized() * self.focus:len()))
+  -- the farther away the focus is from the target line, the faster it will move toward it, perpendicularly. 
+  local per_speed = math.min(perpendistance:len() / self.MAX_TARGET_DISTANCE, 1) * 150 + 5
+  local perpendicular = perpendistance:normalized() * per_speed
+  
+  -- if parallel needs to catch up, it will go faster the further it is away
+  -- self.focus_target * projected finds the dot product of the target and the projected vector. If it is negative, then the projected vector is pointed in the opposite direction of the target, meaning it has to catch up.
+  if self.focus_target * projected < 0 then
+    -- finds speed of parallel axis based on how far the projected vector is from being pointed in the right direction
+    local par_speed = math.min(projected:len() / self.MAX_TARGET_DISTANCE, 1) * 200 + self.BASE_LOOKAHEAD_SPEED
     -- sets the new parallel axis
     parallel = self.focus_target:normalized() * par_speed
   end
@@ -268,8 +404,15 @@ function CameraWrapper:moveDirectAiming()
   self.focus_velocity = new_velocity
 end
  
- function CameraWrapper:checkTarget()
-   print(self.focus_target)
+ -- shakes the screen with supplied duration, frequency and amplitude
+function CameraWrapper:screenShake(duration, frequency, amplitude_max)
+   self.current_shudder = utilities:newShudder(duration, frequency, amplitude_max)
+   --self.current_shudder = utilities:newShudder(0.5, 40, 15)
+end
+
+-- cancels any screen shake that could be ocurring
+function CameraWrapper:cancelScreenShake()
+  self.current_shudder = nil
 end
 
 function CameraWrapper:attach()
@@ -288,6 +431,11 @@ function CameraWrapper:toWorldCoords(x, y)
   return self.camera:worldCoords(x, y, 0, 0, self.NATIVE_RES.width, self.NATIVE_RES.height)
 end
 
+function CameraWrapper:drawCameraBounds()
+  love.graphics.rectangle('line', self.current_bounds.x1, self.current_bounds.y1, self.current_bounds.x2 - self.current_bounds.x1, self.current_bounds.y2 - self.current_bounds.y1)
+  love.graphics.rectangle('line', self.current_bounds.x1 + (self.NATIVE_RES.width/2), self.current_bounds.y1 + (self.NATIVE_RES.height/2), (self.current_bounds.x2 - self.current_bounds.x1) - (self.NATIVE_RES.width/2), (self.current_bounds.y2 - self.current_bounds.y1) - (self.NATIVE_RES.height/2))
+end
+
 function CameraWrapper:draw()
   
   love.graphics.setColor(51/255, 255/255, 230/255, 1)
@@ -299,7 +447,7 @@ function CameraWrapper:draw()
   
   -- draws line from player to focus
   local px, py = self:toCameraCoords(self.origin:unpack())
-  love.graphics.line(px, py, tarx, tary)
+  --love.graphics.line(px, py, tarx, tary)
   
   love.graphics.setColor(255/255, 208/255, 51/255, 1)
 
@@ -313,7 +461,7 @@ function CameraWrapper:draw()
   --love.graphics.circle('line', mtarx, mtary, self.focus_target:len())
   
   -- draws line from player to target
-  love.graphics.line(px,py,mtarx,mtary)
+  --love.graphics.line(px,py,mtarx,mtary)
   --love.graphics.circle('line', px,py,self.MAX_TARGET_DISTANCE)
   
   love.graphics.setColor(142/255, 148/255, 158/255, 1)
@@ -324,6 +472,13 @@ function CameraWrapper:draw()
   love.graphics.points(orx,ory)
   love.graphics.circle('line', orx, ory, 5)
   love.graphics.line(orx,ory,orx-gugx,ory-gugy)
+  
+  if self.current_shudder then
+    love.graphics.setColor(0.5, 0.5, 0.9, 1)
+    local shud_vec = vector(orx, ory) + self.current_shudder:amplitude()
+    love.graphics.points(shud_vec:unpack())
+    love.graphics.circle('line', shud_vec.x, shud_vec.y, 5)
+  end
   
   love.graphics.setColor(0, 1, 0, 1)
     
@@ -345,7 +500,7 @@ function CameraWrapper:draw()
   
   -- distance to projected
   local hix, hiy = (self.focus - (self.focus:projectOn(self.focus_target))):unpack()
-  love.graphics.line(tarx, tary, tarx-hix, tary-hiy)
+  --love.graphics.line(tarx, tary, tarx-hix, tary-hiy)
 
   -- this draws the goofy focus movement technique
   local projected = self.focus:projectOn(self.focus_target)
@@ -372,16 +527,19 @@ function CameraWrapper:draw()
     
   --love.graphics.line(tarx, tary, tarx + perpendistance.x, tary + perpendistance.y)
   love.graphics.setColor(1, 0.5, 0, 1)
-  love.graphics.line(tarx, tary, tarx + perpendicular.x, tary + perpendicular.y)
-  love.graphics.line(tarx, tary, tarx + parallel.x, tary + parallel.y)
-  love.graphics.line(tarx + perpendicular.x, tary + perpendicular.y, tarx + perpendicular.x + parallel.x, tary + perpendicular.y + parallel.y)
-  love.graphics.line(tarx + parallel.x, tary + parallel.y, tarx + parallel.x + perpendicular.x, tary + parallel.y + perpendicular.y)
+  --love.graphics.line(tarx, tary, tarx + perpendicular.x, tary + perpendicular.y)
+  --love.graphics.line(tarx, tary, tarx + parallel.x, tary + parallel.y)
+  --love.graphics.line(tarx + perpendicular.x, tary + perpendicular.y, tarx + perpendicular.x + parallel.x, tary + perpendicular.y + parallel.y)
+  --love.graphics.line(tarx + parallel.x, tary + parallel.y, tarx + parallel.x + perpendicular.x, tary + parallel.y + perpendicular.y)
   love.graphics.setColor(1, 0, 0, 1)
-  love.graphics.line(tarx,tary,tarx+mixed_vector.x,tary+mixed_vector.y)
+  --love.graphics.line(tarx,tary,tarx+mixed_vector.x,tary+mixed_vector.y)
 
   love.graphics.setColor(51/255, 255/255, 230/255, 1)
   --love.graphics.points(self.NATIVE_RES.width/2, self.NATIVE_RES.height/2)
+  --love.graphics.rectangle('line', tarx - (self.NATIVE_RES.width/3), tary - (self.NATIVE_RES.height/3), self.NATIVE_RES.width , self.NATIVE_RES.height)
+  --love.graphics.line(tarx - (self.NATIVE_RES.width/2), tary - (self.NATIVE_RES.height/2),  tarx - (self.NATIVE_RES.width/2), tary + (self.NATIVE_RES.height/2))
   love.graphics.setColor(1, 1, 1, 1)
+  --love.graphics.rectangle('line', self.deadzone.x1, self.deadzone.y1, self.deadzone.x2 - self.deadzone.x1, self.deadzone.y2 - self.deadzone.y1)
 end
 
 return CameraWrapper

@@ -24,6 +24,6 @@ HitstunState.vulnerable = false
 HitstunState.flip_sprite_horizontal = false
 HitstunState.moveCamera = 'always'
 HitstunState.moveCameraTarget = false
-HitstunState.moveCameraFocusMethod = 'direct'
+HitstunState.moveCameraFocusMethod = 'normal'
 
 return HitstunState

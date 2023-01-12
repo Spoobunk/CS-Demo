@@ -13,6 +13,7 @@ function AttackGrab:new(main_class)
   self.move = self.player.player_components.move
   self.grab = self.player.player_components.grab
   self.attack_direction = self.move.face_direction
+  print(self.move.face_direction)
   
   self.player.camera:setTarget(self.player.camera:ellipsify(vector(self.attack_direction * self.player.camera.MAX_TARGET_DISTANCE, 0)))
 
@@ -46,8 +47,8 @@ function AttackGrab:stage1(wait)
   -- swing
   self.anim:Switch_Animation('mash3')
   self.move:Set_Movement_Settings(vector(0, 0), vector(self.attack_direction * 1400, self.main_class.move_input.y * 350), 50, 0.7, 700)
-  local collider = self.player.collision_world:rectangle(self.player.position.x + (60 * self.attack_direction), self.player.position.y, 70, 100)
-  local hitbox = self.main_class:addGrabHitbox(collider, function() return self.player.position.x + (60 * self.attack_direction), self.player.position.y end, self.signal)
+  local collider = self.player.collision_world:rectangle(self.player.pos.x + (60 * self.attack_direction), self.player.pos.y, 70, 100)
+  local hitbox = self.main_class:addGrabHitbox(collider, function() return self.player.pos.x + (60 * self.attack_direction), self.player.pos.y end, self.signal)
   wait(0.06)
   self.player:removeCollider(hitbox)
   wait(0.22)

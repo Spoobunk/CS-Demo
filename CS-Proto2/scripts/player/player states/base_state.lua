@@ -23,7 +23,7 @@ Base_State.vulnerable = true
 -- false : never move camera while in this state
 -- 'with_input' : only move camera when the player is giving movement input
 -- 'always' : move camera no matter what
-Base_State.moveCamera = 'with_input'
+Base_State.moveCamera = 'with_movement'
 -- moveCameraTarget property: boolean value
 -- true : the camera's target point will be updated based on the player's velocity
 -- false : the camera's target point will not be updated, so it will need to be adjusted explicitly

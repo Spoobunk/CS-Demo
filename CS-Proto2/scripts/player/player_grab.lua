@@ -25,7 +25,7 @@ function PlayerGrab:startHold()
   if not self.holding then return false end
   self.state_manager:change_states('holding')
   self.grab_timer:after(0.08, function() self.state_manager.player_components.move:Set_Movement_Settings(nil, nil, 25, 0.5, 100) end)
-  self.holding:moveTo(vector(self.state_manager.position.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.position.y + 25))
+  self.holding:moveTo(vector(self.state_manager.ground_pos.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.ground_pos.y))
   self.holding.height = 50
   if self.state_manager.is_holding_input.grab then 
     self.hold_timer = self.grab_timer:during(1.3, function() 
@@ -43,7 +43,7 @@ function PlayerGrab:update(dt)
     self.holding.update_breakout_timer = self.state_manager:Current_State_Is('holding') or self.state_manager:Current_State_Is('throwing')
     --self.holding:updateMovement(dt, self.state_manager.current_movestep)
     if self.state_manager:Current_State_Is('holding') then 
-      self.holding:moveTo(vector(self.state_manager.position.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.position.y + 25)) 
+      self.holding:moveTo(vector(self.state_manager.ground_pos.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.ground_pos.y)) 
       self.throw_dir = vector(self.state_manager.player_components.move.face_direction, 0)
       
     elseif self.state_manager:Current_State_Is('throwing') then
@@ -54,9 +54,9 @@ function PlayerGrab:update(dt)
         -- weird shit I wrote so that when you do a diagonal direction, it ignores inputs and sticks there for a bit. This is so that when you want to point in a diagonal direction, it doesn't switch back to a cardinal direction once you stop holding the buttons, if you release then fast enough.
         if self.aim_diagonal and (self.aim_diagonal.x ~= digital_input.x or self.aim_diagonal.y ~= digital_input.y) then self.can_aim = false self.grab_timer:after(0.01, function() self.aim_diagonal = nil self.can_aim = true end) else      
           
-          local hold_pos = raw_input:rotated(math.pi)
-          self.holding:moveTo(vector(self.state_manager.position.x + (60 * hold_pos.x), self.state_manager.position.y + (60 * hold_pos.y)))
-          self.throw_dir = raw_input
+          self.throw_dir = raw_input:normalizeInplace()
+          local hold_pos = self.throw_dir:rotated(math.pi)
+          self.holding:moveTo(vector(self.state_manager.ground_pos.x + (60 * hold_pos.x), self.state_manager.ground_pos.y + (60 * hold_pos.y)))
           if raw_input.x ~= 0 and raw_input.y ~= 0 then self.aim_diagonal = digital_input:clone() end
 
         end
@@ -71,11 +71,11 @@ function PlayerGrab:readyThrow()
   self.state_manager:change_states('throwing')
   self.state_manager.player_components.move:Set_Movement_Settings(vector(0, 0), nil, nil, nil, nil)
   local hold_pos = self.throw_dir:rotated(math.pi)
-  self.holding:moveTo(vector(self.state_manager.position.x + (60 * hold_pos.x), self.state_manager.position.y + (60 * hold_pos.y)))
+  self.holding:moveTo(vector(self.state_manager.ground_pos.x + (60 * hold_pos.x), self.state_manager.ground_pos.y + (60 * hold_pos.y)))
 end
 
 function PlayerGrab:doThrow()
-  self.holding:moveTo(vector(self.state_manager.position.x + (20 * self.throw_dir.x), self.state_manager.position.y + (20 * self.throw_dir.y)))
+  self.holding:moveTo(vector(self.state_manager.ground_pos.x + (20 * self.throw_dir.x), self.state_manager.ground_pos.y + (20 * self.throw_dir.y)))
   self.holding:getThrown(self.throw_dir)
   self.holding = nil
   self.state_manager:change_states('dormant')

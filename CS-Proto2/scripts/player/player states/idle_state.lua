@@ -32,7 +32,7 @@ Idle_State.name = "idle"
 Idle_State.canMove = true
 Idle_State.vulnerable = true
 Idle_State.flip_sprite_horizontal = true
-Idle_State.moveCamera = 'with_input'
+Idle_State.moveCamera = 'with_movement'
 Idle_State.moveCameraTarget = true
 Idle_State.moveCameraFocusMethod = 'normal'
 

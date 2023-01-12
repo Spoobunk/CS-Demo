@@ -9,8 +9,8 @@ utilities = require 'scripts.utilities'
 
 Grabbable = Active:extend()
 
-function Grabbable:new(x, y, collision_world, tile_world, main_hitbox) 
-  Grabbable.super.new(self, x, y, collision_world, tile_world)
+function Grabbable:new(x, y, base_height, collision_world, tile_world, main_hitbox) 
+  Grabbable.super.new(self, x, y, base_height, collision_world, tile_world)
   self.main_hitbox = main_hitbox
   --self.collision_resolution[self.main_hitbox] = {PlayerGrab = function(_, other) getGrabbed(other) end}
   self:setCollisionResolution(main_hitbox, 'PlayerGrab', function(separating_vector, other) if not self.thrown then self:getGrabbed(other, vector(separating_vector.x, separating_vector.y)) end end)
@@ -23,14 +23,16 @@ function Grabbable:new(x, y, collision_world, tile_world, main_hitbox)
 end
 
 -- Enemy base class overrides this
-function Grabbable:update()
+function Grabbable:update(dt)
   if self.grabbed then self:updateMovement(dt, self.player.current_movestep) else self:updateMovement(dt, self.Move:getMovementStep(dt)) end
   if self.thrown then 
-    if self.Move.velocity <= vector(50, 50) then 
+    self:updateRotationSpeed()
+    if self.Move.velocity:len() <= 50 then 
       self:finishThrow()
     end
-    self.Anim.rot_speed = self.Move.velocity
   end
+  
+  Grabbable.super.update(self, dt)
 end
 
 function Grabbable:checkTileCollisions(item, other)
@@ -70,7 +72,7 @@ end
 
 -- used to define how each specific entity's thrown collider should be instantiated; should be overidden
 function Grabbable:instanceThrownCollider()
-  self.thrown_hitbox = self:addThrownCollider(self.collision_world:circle(self.pos.x, self.pos.y, 40), function() return self.ground_pos:unpack() end, 30, 400)
+  self.thrown_hitbox = self:addThrownCollider(self.collision_world:circle(self.pos.x, self.pos.y, 40), function() return self.ground_pos:unpack() end, 30, 1)
 end
 
 function Grabbable:getGrabbed(grab_collider)
@@ -94,7 +96,7 @@ function Grabbable:getThrown(throw_dir)
   -- here we're saving a *copy* of throw_dir to work with, so any changes to the REAL throw_dir variable in PlayerGrab don't affect the direction of the enemy.
   throw_direction = throw_dir:clone():normalizeInplace()
   --self.Move:setMovementSettings(vector(0,0), throw_direction * 2000, 100, 0.5, 2000)
-  self.Move:setMovementSettings(nil, throw_direction * 1400, 0, 0.66, 1400)
+  self.Move:setMovementSettings(nil, throw_direction * 900, 0, 0.66, 900)
   --print(self.Move.velocity)
   -- the velocity that the thrown entity will be at for the majority of the time in the thrown state is approximate, due to how the timer library works; the function isn't guaranteed to run exactly in 0.02 seconds, it's only guaranteed to run after 0.02 seconds have elapsed. This won't make a noticeable change in most cases, but it's still there.
   --self.Move.move_timer:tween(0.06, self.Move, {friction = 0}, 'in-linear', function() self.Move.move_timer:tween(0.2, self.Move, {friction = 0.65}, 'in-cubic') end)
@@ -102,8 +104,8 @@ function Grabbable:getThrown(throw_dir)
   self.Move.move_timer:tween(0.02, self.Move, {friction = 0.05}, 'in-cubic', 
     function() self.Move.move_timer:script(
       function(wait)
-        wait(0.02)
-        self:setHeightTween(0.07, 0, 'in-cubic')
+        self:setHeightTween(0.15, 0, 'in-cubic')
+        wait(0.09)
         wait(0.09)
         --[[print(self.Move.velocity:len())]] 
         self.Move.move_timer:tween(0.02, self.Move, {friction = 0.6}) 
@@ -139,6 +141,7 @@ end
 
 -- used when the thrown entity bounces of scenery or collision tiles
 function Grabbable:bounceOffEnvironment(separating_vector)
+  
   local deflected_velocity = self:deflectMovementAngle(separating_vector, 0.75)
   self:moveTo(self.ground_pos + separating_vector)
   self.Move:setMovementSettings(nil, deflected_velocity, nil, nil, nil)

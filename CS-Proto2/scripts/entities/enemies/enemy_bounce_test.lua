@@ -11,17 +11,16 @@ Enemy = require "scripts.entities.enemies.enemy_base"
 EBT = Enemy:extend()
 
 EBT.state = utilities.deepCopy(EBT.super.state)
-EBT.state.alerted.enter = function(self) --[[self:bounce() self.Move:defaultMovementSettings()]] self:rotate() end
+EBT.state.alerted.enter = function(self) --[[self:bounce() self.Move:defaultMovementSettings()]] self:rotate()  end
 
 function EBT:new(x, y, collision_world, tile_world)
-  EBT.super.new(self, x, y, collision_world, tile_world)
+  EBT.super.new(self, x, y, 16, collision_world, tile_world)
   self.name = 'bouncy test enemy'
  
   self.state = EBT.state.idle
   --Anim setup
   local et_sheet = love.graphics.newImage('assets/test/sprites/enemy test sheet.png')
-  self.base_image_offset = vector(math.floor(47 / 2), 23)
-  self.Anim = AnimComponent(self.base_image_offset.x, self.base_image_offset.y, 'assets/basic/sprites/devout/', 'devout')
+  self.Anim = AnimComponent(self, 'assets/basic/sprites/devout/', 'devout')
   local walk_grid = self.Anim:createGrid('step')
   local idle_grid = self.Anim:createGrid('idle')
   local windup_grid= self.Anim:createGrid('wind up')
@@ -34,16 +33,16 @@ function EBT:new(x, y, collision_world, tile_world)
   self.Move = MoveComponent(4, 0.09, 150)
   self.Health = HealthComponent(10, 30, self, self.Anim, self.Move)
   
-  self.hitbox = self:addAttackCollider(self.collision_world:circle(self.pos.x, self.pos.y, 20), "Enemy", function() return self.ground_pos:unpack() end, 3, 0.5, 1500) 
+  self.hitbox = self:addAttackCollider(self.collision_world:circle(self.pos.x, self.pos.y, 20), "Enemy", function() return self.ground_pos.x, self.ground_pos.y - self.base_height end, 3, 0.5, 1500) 
   self.alert_trigger_area = self:addCollider(self.collision_world:circle(self.pos.x, self.pos.y, 200), "AlertTrigger", self, function() return self.ground_pos:unpack() end) 
   self:setCollisionResolution('AlertTrigger', 'Player', function() if self:currentStateIs('idle') then self:alertedToPlayer() end end)
   
-  self:setUpTileCollider(self.pos.x, self.pos.y, 10, 0, 20, 24)
+  self:setUpTileCollider(10, 0, 20, 24)
   self.Anim:switchAnimation('idle')
 end
 
 function EBT:instanceThrownCollider()
-  self.thrown_hitbox = self:addThrownCollider(self.collision_world:circle(self.pos.x, self.pos.y, 40), function() return self.ground_pos:unpack() end, 30, 0.5)
+  self.thrown_hitbox = self:addThrownCollider(self.collision_world:circle(self.pos.x, self.pos.y, 40), function() return self.ground_pos.x, self.ground_pos.y - self.base_height end, 30, 0.5)
 end
 
 function EBT:update(dt)
@@ -61,19 +60,7 @@ function EBT:update(dt)
   EBT.super.update(self, dt)
 end
 
-function EBT:draw()
-  self.Anim:draw(self.pos.x, self.pos.y)
-  -- draw box around current frame
-  --self.Anim:drawFrameBox(self.pos.x, self.pos.y)
-  love.graphics.setColor(1, 0, 0, 1)
-  --love.graphics.rectangle('line', self.pos.x, self.pos.y, self.Anim:getCurrentAnim():getDimensions())
-  love.graphics.points(self.pos:unpack())
 
-  self:drawColliders()
-  --self:drawTileCollider()
-  --self:drawRenderPosition()
-  love.graphics.setColor(1, 1, 1, 1)
-end
 
 function EBT:bounce()
   self:jump(0.5, 120, 'quad', function() self:bounce() end)

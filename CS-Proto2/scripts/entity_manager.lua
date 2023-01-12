@@ -1,11 +1,15 @@
 Object = require "libs.classic.classic"
 Entity = require "scripts.entities.entity_base"
 Enemy = require "scripts.entities.enemies.enemy_base"
+Active = require "scripts.entities.entity_active_base"
 
 Entity_Manager = Object:extend()
 Entity_Manager.entities = {}
 
 function Entity_Manager.drawEntities() 
+    for _, e in ipairs(Entity_Manager.entities) do
+    if e:is(Active) or e:is(Player) then e:drawShadow() end
+  end
   for _, e in ipairs(Entity_Manager.entities) do
     e:draw()
   end

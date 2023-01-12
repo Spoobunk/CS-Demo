@@ -22,7 +22,7 @@ function Player_Move:new(state_manager)
     
   self.velocity = vector(0,0)
   -- constants that represent Stooba's normal movement, when runnin' around
-  self.RUN_ACC = 200
+  self.RUN_ACC = 155
   --self.RUN_ACC = 10
   self.RUN_FRIC = 0.85
   --self.RUN_FRIC = 0.95
@@ -38,10 +38,13 @@ function Player_Move:new(state_manager)
   self.can_dodge_spin = true
   -- timer instance only for things related to movement
   self.move_timer = Timer.new()
+    -- a timer instance only used for height tweens
+  self.height_timer = Timer.new()
 end
 
 function Player_Move:update(dt, axis_x, axis_y) 
   self.move_timer:update(dt)
+  self.height_timer:update(dt)
   
   self.raw_input = vector(axis_x, axis_y)
   local input_x = (axis_x == 0 and 0 or axis_x / math.abs( axis_x ))
@@ -58,7 +61,7 @@ function Player_Move:update(dt, axis_x, axis_y)
   -- technically I could replace face_direction with last_input.x
   self.last_input = vector(input_x ~= 0 and input_x or self.last_input.x, input_y ~= 0 and input_y or self.last_input.y)
   self.face_direction = input_x ~= 0 and input_x or self.face_direction
-  if self.state_manager.current_state.flip_sprite_horizontal then self.state_manager.player_components.anim:flipSpriteHorizontal(self.face_direction) end
+  if self.state_manager.current_state.flip_sprite_horizontal then self.state_manager.player_components.anim:flipSpriteHorizontal(self.face_direction) else  end
     
   -- does running animation
   if(self.state_manager:Current_State_Is("idle")) then
@@ -142,8 +145,10 @@ function Player_Move:Damaged_Knockback(knockback_dir, knockback_power)
   knockback_dir:normalizeInplace()
   self:Set_Movement_Settings(vector(0, 0), knockback_dir * knockback_power, 50, 0.55, 3000)
   self:Set_Movement_Input(false)
-  self.move_timer:after(0.3, function() self.state_manager:change_states('idle') self:Set_Movement_Settings(vector(0, 0), false, self.RUN_ACC, self.RUN_FRIC, self.RUN_MAX_VEL) end)
-  self.move_timer:after(0.15, function() self:Set_Movement_Input(true) end)
+  
+  self.move_timer:after(0.3, function() self.state_manager:change_states('idle') self:Set_Movement_Settings(vector(0, 0), false, self.RUN_ACC, self.RUN_FRIC, self.RUN_MAX_VEL) self.state_manager:setInputBuffering('all', false) end)
+  self.move_timer:after(0.15, function() self:Set_Movement_Input(true) self.state_manager:setInputBuffering('all', true) end)
+  self.state_manager:jump(0.1, 50, 'cubic', nil, 1)
 end
 
 function Player_Move:dodgeSpin()

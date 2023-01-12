@@ -11,8 +11,10 @@ Health = require "scripts.player.player_health"
 Grab = require "scripts.player.player_grab"
 
 Entity = require "scripts.entities.entity_base"
+Active = require "scripts.entities.entity_active_base"
+Hand = require "scripts.player.hand"
 
-Player = Entity:extend()
+Player = Active:extend()
 
 local path_to_states = "scripts.player.player states."
 
@@ -35,7 +37,7 @@ Player.player_states = {
 -- @param collision_world: world for entity collisions, seperate from tilemap collisions
 -- @param tile_world: world for tilemap collisions
 function Player:new(x, y, collision_world, tile_world)
-  Player.super.new(self, x, y, collision_world, tile_world)
+  Player.super.new(self, x, y, 26, collision_world, tile_world)
   self.name = "Player"
   self.current_state = Player.player_states.idle
   local move_component = Move(self)
@@ -49,47 +51,38 @@ function Player:new(x, y, collision_world, tile_world)
   
   self.camera = nil -- camera reference, set in game_state.lua
   
-  --self.img = love.graphics.newImage("assets/basic/sprites/player/stuba test.png")
-  self.position = vector(x, y) or vector(0, 0)
-  self.ground_pos = self.position
-  self.current_movestep = vector(0, 0)
-  self.base_image_offset = vector(30 / 2, 52 / 2)
-  -- 31 by 51: dimensions for stooba's standing sprite sheet, to establish where their feet lie
-  -- i.e.: stuba's idle, standing animation is drawn (31/2) pixels left and (51/2) above their actual position, so it is centered.
-  
-  -- a timer that won't ever be cleared
-  self.protected_timer = Timer.new()
+  -- saves an input that will be executed once the buffering for that input type is disabled. can be overwritten
   self.buffered_input = nil
+  -- tells whether an input type is currently being buffered or not. if an input is received, and that input type is currently being buffered, then that input will be saved in the buffered_input variable (this doesn't necessarily mean that input won't call a function at the same time)
   self.is_buffering_input = {attack = false, grab = false, spin = false}
   -- keeps track of what inputs are being held down
   self.is_holding_input = {attack = false, grab = false, spin = false}
   
-  self.in_suspense = false
-  
-  self.cancel_timers = {}
-  
   self.collision_world = collision_world
-  self.collider = self.collision_world:circle(self.position.x, self.position.y, 20)
-  self.test_guy = self.collision_world:rectangle(400, 400, 100, 100)
-  self.test_guy2 = self.collision_world:circle(100, 300, 100)
+  self.collider = self.collision_world:circle(self.pos.x, self.pos.y, 20)
+  --self.test_guy = self.collision_world:rectangle(400, 400, 100, 100)
+  --self.test_guy2 = self.collision_world:circle(100, 300, 100)
   self.lock_test = self.collision_world:rectangle(700, -500, 100, 100)
-  self:addCollider(self.collider, "Player", self, function() return self.ground_pos:unpack() end)
-  self:addCollider(self.test_guy, "Reflect", self, function() return 400, 0 end)
-  self:addCollider(self.test_guy2, "Test", self, function() return 100, 300 end) 
+  self:addCollider(self.collider, "Player", self, function() return self.ground_pos.x, self.ground_pos.y - self.base_height end)
+  --self:addCollider(self.test_guy, "Test", self, function() return 400, 0 end)
+  --self:addCollider(self.test_guy2, "Test", self, function() return 100, 300 end) 
   self:addCollider(self.lock_test, "CameraLock", self, function() return 700, -500 end) 
 
-  self.setUpTileCollider(self, self.position.x, self.position.y, 12, -1, 25, 24)
+  self:setUpTileCollider(12, -5, 25, 24)
   
-  self.collision_resolution = {
-    Player = {--Test = function(separating_vector) self.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y), 1700) end,
-              Test = function(separating_vector) self:moveTo(self.ground_pos + vector(separating_vector.x, separating_vector.y)) end,
-              Enemy = function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.health:takeDamage(separating_vector, other) end end,
-              CameraLock = function(separating_vector, other) self.camera:lockCamera(900, nil) end}
-  }
+  -- How this works: the collision resolution table specifies how to resolve collisions between colliders with certain tags. When a collider attached to this object collides with something, it goes here to look for how to resolve it, using the tag of the collided object.
+  self:setCollisionResolution('Player', 'Test', function(separating_vector) self:moveTo(self.ground_pos + vector(separating_vector.x, separating_vector.y)) end)
+  self:setCollisionResolution('Player', 'Enemy', function(separating_vector, other) if(not other.object:currentStateIs('hitstun')) then self.player_components.health:takeDamage(separating_vector, other) end end)
+  self:setCollisionResolution('Player', 'CameraLock', function(separating_vector, other) self.camera:lockCamera(900, nil) end)
+  self:setCollisionResolution('Player', 'PushTest', function(separating_vector, other) 
+    self:entityCollisionPushBack(separating_vector, other, 0.1)
+  end)
+
   -- these are conditions that the collisions resolution system checks before resolving collisions. the conditions of each party is checked. if either returns false, then no resolution is done on either party.
-  self.collision_condition = {
-    Player = {Enemy = function() return self.player_components.health:isVulnerable() end}
-  }
+  self:setCollisionCondition('Player', 'Enemy', function() return self.player_components.health:isVulnerable() end)
+  
+  self.shadow_object = ShadowObject(self, 15, 7)
+  self.hand = Hand(self, 13)
 end
 
 function Player:change_states(to)
@@ -166,55 +159,25 @@ function Player:clearInputBuffer()
   self:setInputBuffering('all', false)
 end
 
-function Player:addCancelTimer(time, condition, action)
-  local ct = {}
-  ct.action = function() action() self:removeCancelTimer(ct.handle) end
-  ct.condition = condition
-  ct.handle = self.protected_timer:after(time, ct.action)
-  table.insert(self.cancel_timers, ct)
-  return ct
-end
-
-function Player:removeCancelTimer(handle)
-  for i, ct in ipairs(self.cancel_timers) do
-    if ct.handle == handle then table.remove(self.cancel_timers, i) end
-  end
-end
-
-function Player:updateCancelTimers()
-  for i = #self.cancel_timers, 1, -1 do 
-    local ct = self.cancel_timers[i]
-    if not ct.condition() then self.protected_timer:cancel(ct.handle) ct.action() end
-  end
-end
-
--- @param t number duration of suspense
--- @param after_func optional function parameter that gets run when suspense is ended
-function Player:setSuspense(t, can_move, after_func)
-  self.in_suspense = true
-  local this_state = self.current_state
-  if can_move then
-    self:addCancelTimer(t, function() return self.current_state == this_state end, function() self.in_suspense = false if after_func then after_func() end end)
-  else
-    self.player_components.move.update_movement = false
-    self:addCancelTimer(t, function() return self.current_state == this_state end, function() self.in_suspense = false self.player_components.move.update_movement = true if after_func then after_func() end end)
-  end
-end
-
 function Player:draw()
-  self.player_components.anim:draw(self.position.x, self.position.y)
+  --self.player_components.anim:drawFrameBox(self.pos.x, self.pos.y)
+  local draw_pos = self.pos:clone()
+  if self.current_shudder then draw_pos = draw_pos + self.current_shudder:amplitude() end
+  self.player_components.anim:draw(draw_pos:unpack())
   --draw box around current frame
-  --self.player_components.anim:drawFrameBox(self.position.x, self.position.y)
+  --self.player_components.anim:drawFrameBox(self.pos.x, self.pos.y)
   
   --self:drawRenderPosition()
   --self:drawTileCollider()
   love.graphics.setColor(255, 0, 0, 1)
   -- drawing absolute position
-  love.graphics.points(self.position.x, self.position.y)
+  --love.graphics.points(self.pos:unpack())
+  --love.graphics.points(self.ground_pos:unpack())
   love.graphics.setColor(0, 0, 255, 1)
 
-  self:drawColliders()
+  --self:drawColliders()
   love.graphics.setColor(255, 255, 255, 1)
+  self.hand:draw(draw_pos:unpack())
 end
 
 function Player:update(dt, move_input_x, move_input_y) 
@@ -226,43 +189,20 @@ function Player:update(dt, move_input_x, move_input_y)
     end
   end
 
-  self.protected_timer:update(dt)
   if self.buffered_input and not self.is_buffering_input[self.buffered_input] then self:input_button(self.buffered_input) self.buffered_input = nil end
-  self:updateCancelTimers()
-    
-  local last_pos = self.ground_pos
-  
-  --player's custom version of the movement segment of Entity.update()
-  --if not self.in_suspense then
-    local move_step = self.player_components.move:get_movement_step(dt, move_input_x, move_input_y)
-    --print(move_step)
-    --move_step = vector(math.floor(move_step.x + 0.5), math.floor(move_step.y + 0.5))
-    --print(move_step)
-    local goal_pos = (self.ground_pos + move_step) - self.tile_collider_offset
-    local actualX, actualY, cols, len = self.tile_world:move(self, goal_pos.x, goal_pos.y, function(item, other) return self:checkTileCollisionForHeight(item, other) end)
-  
-    self.ground_pos = vector(actualX, actualY) + self.tile_collider_offset
-    
-    self.position = self.ground_pos - vector(0, self.height)
-    self.pos = self.position
-  --end
-  
   self.camera:releaseCamera()
+  self:updateMovement(dt, self.player_components.move:get_movement_step(dt, move_input_x, move_input_y))
   
-  self:updateColliderPositions()
-  self:resolveCollisions()
-  self:updateColliderPositions()
-  
-  --self.ground_pos = vector(math.floor(self.ground_pos.x + 0.5), math.floor(self.ground_pos.y + 0.5))
-  self.position = self.ground_pos - vector(0, self.height)
-  self.pos = self.position
-  self.current_movestep = self.ground_pos - last_pos
-  --if not self.in_suspense then self.current_movestep = self.ground_pos - last_pos else self.current_movestep = vector(0, 0) end
+  Player.super.update(self, dt)
+  self.hand:update(dt)
 end
 
 function Player:getRenderPosition()
-  oy = self.player_components.anim:Get_Base_Image_Offset().y
-  return math.floor(((self.position.y + self.height) + oy) + 0.5)
+  return self.ground_pos.y
+end
+
+function Player:drawShadow()
+  if self.shadow_object then self.shadow_object:drawShadow() end
 end
 
 return Player 

@@ -31,6 +31,8 @@ function PlayerHealth:takeDamage(separating_vector, other_collider)
   self.state_manager.player_components.move:Damaged_Knockback(vector(separating_vector.x, separating_vector.y), knockback)
   self.state_manager.player_components.grab:abortGrab(suspense, last_state)
   self.state_manager:setSuspense(suspense, false)
+  --self.state_manager.camera:screenShake(0.25, 40, 20)
+  self.state_manager:shudder(0.2, 50, 10)
   if other_collider.tag == 'Enemy' then other_collider.object:collisionBounce(separating_vector, suspense) end
 end
 

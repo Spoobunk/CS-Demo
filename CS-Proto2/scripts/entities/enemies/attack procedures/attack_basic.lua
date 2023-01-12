@@ -35,13 +35,13 @@ function AttackBasic:new(main_class)
   self.stages[self.current_stage].enter()
 end
 
--- getting in line with the player
+-- getting in line with the quarry
 function AttackBasic:stage1()
-  self.attack_direction = self.main_class.player_is_to
+  self.attack_direction = self.main_class.quarry_is_to
     
-  self.main_class.following_player = false
-  self.main_class.facing_player = false
-  self.target = vector(self.main_class.player.position.x + (100 * -self.attack_direction), self.main_class.player.position.y)
+  self.main_class.following_quarry = false
+  self.main_class.facing_quarry = false
+  self.target = vector(self.main_class.quarry.pos.x + (100 * -self.attack_direction), self.main_class.quarry.pos.y)
 
   local target_distance = (self.target.y - self.main_class.pos.y)
   
@@ -52,9 +52,9 @@ function AttackBasic:stage1()
   local toward_target = self.target - self.main_class.pos
   toward_target = toward_target:normalizeInplace()
   self.main_class.Move:setMovementSettings(toward_target, nil, 4, 0.09, 150) 
-  --This stage should end when the enemy is lined up with the player as defined in the exit condition, but in the case that doesn't happen, this timer will end it the attack.
+  --This stage should end when the enemy is lined up with the quarry as defined in the exit condition, but in the case that doesn't happen, this timer will end it the attack.
   self.timer:after(3, function() self:nextStage() end)
-  -- skips this stage if the enemy is already roughly in line with the player
+  -- skips this stage if the enemy is already roughly in line with the quarry
   if math.abs(target_distance) < 0.5 then self:nextStage() end
 end
 

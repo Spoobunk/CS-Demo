@@ -4,8 +4,13 @@ vector = require "libs.hump.vector"
 luna = require "libs.lunajson.src.lunajson"
 
 utilities = require 'scripts.utilities'
+shader_assembler = require 'scripts.shader_wrapper'
 
 Player_Anim = Object:extend()
+
+local pcode = shader_assembler.assembleShader('pixel', 'outline')
+
+player_shader = love.graphics.newShader(pcode)
 
 -- TODO: make it so only a set of anims are exposed that make sense for the player's current state
 function Player_Anim:new()
@@ -166,12 +171,24 @@ function Player_Anim:update(dt)
 end
 
 function Player_Anim:draw(x, y)
+  -- retrieves the quad that describes the current frame of animation from the animation library
+  local spriteQuad = self.current_anim:getFrameInfo()
+  -- gets the width and height of the quad, as well as the x and y position of the quad on the spritesheet
+  local quadx, quady, quadw, quadh = spriteQuad:getViewport()
   local offsetX, offsetY = self:Get_Draw_Offset(self.current_anim:getDimensions())
+
+  love.graphics.setShader(player_shader)
+  if love.graphics.getShader() == player_shader then 
+    player_shader:send('texture_size', {self.current_sheet:getPixelDimensions()})
+    player_shader:send('sprite_offset', {quadx, quady})
+    player_shader:send('sprite_size', {quadw, quadh})
+  end
   if self.current_do_flip then
     self.current_anim:flipH(self.horizontal_flip):draw(self.current_sheet, x, y, 0, 1, 1, offsetX, offsetY)
   else
     self.current_anim:draw(self.current_sheet, x, y, 0, 1, 1, offsetX, offsetY)
   end
+  love.graphics.setShader()
 end
 
 function Player_Anim:drawFrameBox(x, y)

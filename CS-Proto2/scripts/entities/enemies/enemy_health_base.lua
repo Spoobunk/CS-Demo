@@ -11,6 +11,8 @@ function HealthBase:new(base_health, base_composure, main_class, anim_component,
   self.main = main_class
   self.anim = anim_component
   self.move = move_component
+  -- a varaible that saves whether the enemy was being pushed into a wall last frame, so we can detect when the enemy starts and stops getting pushed into a wall
+  self.was_being_pushed_into_wall_last_frame = false
   -- the variable that indicates whether another enemy hit by the same attack is being pushed into a wall, meaning this one should act the same.
   self.group_moving_into_wall = false
   self.pushed_enemy = nil
@@ -47,18 +49,23 @@ function HealthBase:takePlayerDamage(seperating_vector, attack_collider)
     self.main.height = 0
     self.attack_signal = attack_collider.kb_signal
     self.attack_signal:emit('hit-confirm')
+    self.main:shudder(0.2, 50, 10)
+    --self.main:shudder(5, 50, 25)
     --self.main.in_suspense = true
     self.attack_signal:register('suspense-end', function() self.main.in_suspense = false end)
     --self.main:setSuspense(attack_collider.suspense_time)
 
     self.last_attack_hitbox = attack_collider
-    self.main.traveling_with_player = true
+    self.main.traveling_with_quarry = true
     self.group_moving_into_wall = false
     
-    -- normalizes the knockback vector, then sets the x component to point directly away from the player, so the enemy never receives knockback toward the player
+    -- normalizes the knockback vector 
     seperating_vector:normalizeInplace()
-    seperating_vector.x = -self.main.player_is_to
-    self.timer:after(attack_collider.kb_wait, function() self:knockback(seperating_vector, attack_collider.knockback) self.main.traveling_with_player = false end)
+    -- the y component of the knockback vector is squashed, so that enemys don't fly up and out of view of the camera
+    seperating_vector = utilities.ellipsify(seperating_vector)
+    -- sets the x component to point directly away from the quarry, so the enemy never receives knockback toward the quarry
+    seperating_vector.x = -self.main.quarry_is_to
+    self.timer:after(attack_collider.kb_wait, function() self:knockback(seperating_vector, attack_collider.knockback) self.main.traveling_with_quarry = false end)
     
     
     --self.attack_signal:register('pushed-against-wall', function(_, pushed_enemy) if self.main ~= pushed_enemy then self.pushed_enemy = pushed_enemy end end)
@@ -68,7 +75,7 @@ function HealthBase:takePlayerDamage(seperating_vector, attack_collider)
     -- if I need to apply knockback a little bit of time after the attack finishes, I just need to have the signal trigger a timer
     -- 
     self.attack_signal:register('attack-end', function(sit) 
-      self.main.traveling_with_player = false
+      self.main.traveling_with_quarry = false
       if sit == 'aborted' then 
         self.timer:clear() self:knockback(seperating_vector, attack_collider.knockback) 
       else 
@@ -94,6 +101,7 @@ function HealthBase:takeDamage(seperating_vector, thrown_collider)
     self.main:cancelHeightTween()
     self.main.height = 0
     self.main:setSuspense(thrown_collider.suspense)
+    self.main:shudder(0.8, 50, 30)
     local thrown = thrown_collider.object
     -- knockback velocity = unit vector representing direction * magnitude of the thrown entity's velocity
     local knockback_velocity = seperating_vector:normalizeInplace() * (thrown.Move.velocity:len() * 0.75)
@@ -126,9 +134,8 @@ end
 function HealthBase:playerAttackThrownReflect(separating_vector, thrown_collider)
   if self.last_attack_hitbox ~= thrown_collider then
     self.last_attack_hitbox = thrown_collider
-    print('lol')
     local deflect_vel = separating_vector:normalized() 
-    deflect_vel.x = -self.main.player_is_to
+    deflect_vel.x = -self.main.quarry_is_to
     
     deflect_vel = deflect_vel * self.main.Move.velocity:len() * 2
     
@@ -155,8 +162,11 @@ end
 function HealthBase:update(dt)
   if not self.main.in_suspense then self.timer:update(dt) end
 
-  if self.main.moving_into_wall_x then self.attack_signal:emit('pushed-against-wall', math.abs(self.main.player.pos.x - self.main.pos.x), self.main) end
+  if self.main.moving_into_wall_x then self.attack_signal:emit('pushed-against-wall', math.abs(self.main.quarry.pos.x - self.main.pos.x), self.main) end
 end
 
+--[[function HealthBase:updateEnemyWallPushback()
+  if self.main.moving_into_wall_x ~= self.was_being_pushed_into_wall_last_frame then self.attack_signal:emit('pushed-against-wall', math.abs(self.main.quarry.pos.x - self.main.pos.x), self.main) end
+end]]
 
 return HealthBase 
