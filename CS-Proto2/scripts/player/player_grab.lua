@@ -27,6 +27,10 @@ function PlayerGrab:startHold()
   self.grab_timer:after(0.08, function() self.state_manager.player_components.move:Set_Movement_Settings(nil, nil, 25, 0.5, 100) end)
   self.holding:moveTo(vector(self.state_manager.ground_pos.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.ground_pos.y))
   self.holding.height = 50
+   -- retrieves the current position of the end of the arm from the hand class
+  local end_of_arm = self.state_manager.pos + self.state_manager.hand:getArmEndPosition()
+  -- we move the held thing to the correct ground position to make it so that its sprite lines up with the end of the arm
+  self.holding:moveTo(vector(end_of_arm.x, end_of_arm.y + self.holding.height + self.holding.base_height))
   if self.state_manager.is_holding_input.grab then 
     self.hold_timer = self.grab_timer:during(1.3, function() 
         if not self.state_manager.is_holding_input.grab then self.grab_timer:cancel(self.hold_timer) end
@@ -44,6 +48,10 @@ function PlayerGrab:update(dt)
     --self.holding:updateMovement(dt, self.state_manager.current_movestep)
     if self.state_manager:Current_State_Is('holding') then 
       self.holding:moveTo(vector(self.state_manager.ground_pos.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.ground_pos.y)) 
+      -- retrieves the current position of the end of the arm from the hand class
+      local end_of_arm = self.state_manager.pos + self.state_manager.hand:getArmEndPosition()
+      -- we move the held thing to the correct ground position to make it so that its sprite lines up with the end of the arm
+      self.holding:moveTo(vector(end_of_arm.x, end_of_arm.y + self.holding.height + self.holding.base_height))
       self.throw_dir = vector(self.state_manager.player_components.move.face_direction, 0)
       
     elseif self.state_manager:Current_State_Is('throwing') then

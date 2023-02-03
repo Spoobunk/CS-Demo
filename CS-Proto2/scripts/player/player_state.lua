@@ -82,7 +82,7 @@ function Player:new(x, y, collision_world, tile_world)
   self:setCollisionCondition('Player', 'Enemy', function() return self.player_components.health:isVulnerable() end)
   
   self.shadow_object = ShadowObject(self, 15, 7)
-  self.hand = Hand(self, 13)
+  self.hand = Hand(self, 11)
 end
 
 function Player:change_states(to)
@@ -163,7 +163,9 @@ function Player:draw()
   --self.player_components.anim:drawFrameBox(self.pos.x, self.pos.y)
   local draw_pos = self.pos:clone()
   if self.current_shudder then draw_pos = draw_pos + self.current_shudder:amplitude() end
+  self.hand:draw(draw_pos.x, draw_pos.y, -1)
   self.player_components.anim:draw(draw_pos:unpack())
+  self.hand:draw(draw_pos.x, draw_pos.y, 1)
   --draw box around current frame
   --self.player_components.anim:drawFrameBox(self.pos.x, self.pos.y)
   
@@ -175,9 +177,8 @@ function Player:draw()
   --love.graphics.points(self.ground_pos:unpack())
   love.graphics.setColor(0, 0, 255, 1)
 
-  --self:drawColliders()
+  self:drawColliders()
   love.graphics.setColor(255, 255, 255, 1)
-  self.hand:draw(draw_pos:unpack())
 end
 
 function Player:update(dt, move_input_x, move_input_y) 
@@ -194,7 +195,9 @@ function Player:update(dt, move_input_x, move_input_y)
   self:updateMovement(dt, self.player_components.move:get_movement_step(dt, move_input_x, move_input_y))
   
   Player.super.update(self, dt)
-  self.hand:update(dt)
+  if not self.in_suspense then
+    self.hand:update(dt)
+  end
 end
 
 function Player:getRenderPosition()

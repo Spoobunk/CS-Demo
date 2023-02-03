@@ -29,7 +29,7 @@ function AttackMash:new(main_class)
     {enter = function() self.timer:script(function(wait) self:stage3(wait) end) end,
      suspense_time = 0.02},
     {enter = function() self.timer:script(function(wait) self:stage4(wait) end) end,
-     suspense_time = 0.05},
+     suspense_time = 0.08},
     {enter = function() self:exit() end}
   }
 
@@ -62,7 +62,7 @@ end
 
 function AttackMash:onHit() 
   if not self.player.in_suspense then 
-    --self.player:setSuspense(self.stages[self.current_stage].suspense_time, true, function() self.signal:emit('suspense-end') end) 
+    self.player:setSuspense(self.stages[self.current_stage].suspense_time, true, function() self.signal:emit('suspense-end') end) 
   end 
 end
 
@@ -87,7 +87,8 @@ function AttackMash:swingMash(damage, kb_wait, kb_power)
   self.move:Set_Movement_Settings(vector(0, 0), vector(self.attack_direction * 1400, y_vel), 50, 0.7, 700)
   -- no need to call the exit method manually, it's called whenever the player's state transitions from the attacking state
   self.timer:after(0.4, function() self.player:change_states('idle') end)
-  self.timer:after(0.06, function() self.player:removeCollider(self.hitbox) end)
+  -- make it so the timer to remove the collider isn't affected by being in-suspense
+  self.player.protected_timer:after(0.07, function() self.player:removeCollider(self.hitbox) end)
 end
 
 function AttackMash:nextStage()
@@ -103,11 +104,15 @@ function AttackMash:nextStage()
 end
 
 function AttackMash:stage1(wait)
+    -- wind-up 
+  self.anim:Switch_Animation('mashready3')
+  self.player.hand:readySwing(1, self.attack_direction)
+  wait(0.08)
   -- swing
-  self.anim:Switch_Animation('mash1') 
+  --self.anim:Switch_Animation('mash1') 
   self.player.hand:swing(1, self.attack_direction)
   self:swingMash(3, 0.45, 1000)
-  wait(0.11)
+  wait(0.08)
   -- can proceed to next stage
   self.accepting_input = true
   if self.input_buffer:pop() then self:nextStage() end
@@ -123,10 +128,10 @@ function AttackMash:stage2(wait)
   self.player.hand:readySwing(2, self.attack_direction)
   wait(0.08)
   -- swing
-  self.anim:Switch_Animation('mash2')
+  --self.anim:Switch_Animation('mash2')
   self.player.hand:swing(2, self.attack_direction)
   self:swingMash(3, 0.45, 1000)
-  wait(0.11)
+  wait(0.08)
   -- can proceed to next stage
   self.accepting_input = true 
   if self.input_buffer:pop() then self:nextStage() end
@@ -142,10 +147,10 @@ function AttackMash:stage3(wait)
   self.player.hand:readySwing(3, self.attack_direction)
   wait(0.08)
   -- swing
-  self.anim:Switch_Animation('mash3')
+  --self.anim:Switch_Animation('mash3')
   self.player.hand:swing(3, self.attack_direction)
   self:swingMash(3, 0.45, 1000)
-  wait(0.11)
+  wait(0.08)
   -- can proceed to next stage
   self.accepting_input = true 
   if self.input_buffer:pop() then self:nextStage() end
@@ -159,9 +164,9 @@ function AttackMash:stage4(wait)
   -- wind-up 
   self.anim:Switch_Animation('mashready2')
   self.player.hand:readySwing(4, self.attack_direction)
-  wait(0.08)
+  wait(0.12)
   -- swing
-  self.anim:Switch_Animation('mash2')
+  --self.anim:Switch_Animation('mash2')
   self.player.hand:swing(4, self.attack_direction)
   self:swingMash(6, 0.02, 1700)
   wait(0.28)

@@ -51,7 +51,7 @@ function HealthBase:takePlayerDamage(seperating_vector, attack_collider)
     self.attack_signal:emit('hit-confirm')
     self.main:shudder(0.2, 50, 10)
     --self.main:shudder(5, 50, 25)
-    --self.main.in_suspense = true
+    self.main.in_suspense = true
     self.attack_signal:register('suspense-end', function() self.main.in_suspense = false end)
     --self.main:setSuspense(attack_collider.suspense_time)
 

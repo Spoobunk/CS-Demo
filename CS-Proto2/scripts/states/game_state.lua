@@ -101,7 +101,7 @@ function game_state:enter()
   
   
   local e_boy = e_test(50, 50)
-  local o_boy = ot(100, -50,  entity_collision, tile_world)
+  local o_boy = ot(500, -50,  entity_collision, tile_world)
   e_guy = et(0, 0, entity_collision, tile_world)
   e_gut = et(0, 300, entity_collision, tile_world)
   e_gur = et(0, 300, entity_collision, tile_world)

@@ -73,6 +73,10 @@ function Player_Move:update(dt, axis_x, axis_y)
       anim.idle_anim = anim.idle_anim_matrix[2+self.digital_input.y][2+self.digital_input.x]
     end
   end
+  
+  if(self.state_manager:Current_State_Is("holding")) then
+    self.state_manager.hand:holdingPosition(self.digital_input)
+  end
 end
 
 function Player_Move:get_movement_step(dt, axis_x, axis_y)
