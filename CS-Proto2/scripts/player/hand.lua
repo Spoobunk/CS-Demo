@@ -55,7 +55,9 @@ function Hand:new(state_manager, segments)
   -- this table contains vectors, each representing the position of a joint in the arm. each position vector is interpreted as being relative to the previous joint in the series. The vectors are in polar coordinates, with x being the angle and y being the length of the position vector.
   -- the choice of polar coordinates was made because in most cases when dealing with the idea of an arm with several joints, this format is more convenient
   self.joints = {}
-	
+  self.joint_depths = {}
+	self.joint_colors = {}
+  
   -- the normal legnth of each segment that makes up the arm. Each segment can define their own length in the joints table, but this is used as the standard
   self.standard_segment_length = 8.5
 	
@@ -65,6 +67,7 @@ function Hand:new(state_manager, segments)
 
     local vertex = vector(angle, self.standard_segment_length)
     table.insert(self.joints, vertex)
+    table.insert(self.joint_depths, 1) 
 	end
   
   local vertex_format = {
@@ -97,8 +100,12 @@ function Hand:new(state_manager, segments)
   self.current_swing_speed = 0
   self.angle_timer = Timer:new()
   
+  self.test_hold_pos = vector(0,0)
+  self.test_hold_seg = vector(0,0)
+  
   --self:testSwingMotion(1)
   self:testDepth()
+  self.noodle = 0
 
   self.num_of_afterimages = 25
   -- afterimage_meshes is a table that holds a static number of meshes that are used as afterimages
@@ -130,7 +137,7 @@ function Hand:update(dt)
     self.arm_angle = self.arm_angle + self.arm_speed
     self.angle = self.angle + (self.angle_speed*dt)
   else
-    self:updateArmVertices(self.joints, 0)
+    self:updateArmVertices(self.joints, 0, self.joint_depths, self.joint_colors)
     --self:updateAfterimages(dt)
   end
 end
@@ -253,6 +260,7 @@ function Hand:testDepth()
   end
   self.joints[1].x = math.rad(0) + self.joints[1].x
   local vertices = self:jointsToVertices(self.joints, 0, segment_depths)
+  self.joint_depths = segment_depths
   self.mesh:setVertices(vertices)
 end
 
@@ -384,12 +392,14 @@ function Hand:onGrab(attack_direction)
   self.angle_timer:tween(0.1, self, {current_swing_speed = 0}, 'linear')
   --self.swinging=false
   --self.showing_afterimages=false
-  joints, depths = self:holdingPosition(vector(0, 1))
+  joints, depths = self:holdingPosition(vector(0, 1), vector(0,2))
+  self.joint_depths = depths
   self.angle_timer:after(0.1, function() 
     self.swinging=false
     self.showing_afterimages=false
     for i=1,#self.joints do
       self.angle_timer:tween(0.2, self.joints[i], {x = joints[i].x}, 'out-cubic')
+      self.angle_timer:tween(0.2, self.joints[i], {y = joints[i].y}, 'out-cubic')
     end
     --self:updateArmVertices(joints, 0, depths) 
   end)
@@ -401,6 +411,13 @@ function Hand:retractArm(time, segment)
   --self.showing_afterimages = false
   local current_segment = segment or #self.joints
   local retract_duration = time / #self.joints
+  --here, if the retract duration is low enough, then we skip the process of setting tweens and just set the lengths of every subsequent joint to 0, and return some value to stop the function for recurring.
+  if retract_duration < 0.0001 then 
+    for i=current_segment,1,-1 do
+      self.joints[i].y = 0
+    end
+    return false
+  end
   self.angle_timer:tween(retract_duration, self.joints[current_segment], {y = 0}, 'linear', function()
     if current_segment ~= 1 then
       self:retractArm(time * 0.5, current_segment - 1)
@@ -408,49 +425,129 @@ function Hand:retractArm(time, segment)
   end)
 end
 
-function Hand:changeHoldingPosition(face_direction)
-  self:setArmVertices(self:holdingPosition(face_direction))
+function Hand:retracterBeam(time)
+  self.swinging = false
+  for i=1,#self.joints do
+    self.angle_timer:tween(time, self.joints[i], {y=0}, 'linear')
+  end
 end
 
+function Hand:changeHoldingPosition(face_direction, hold_pos)
+  local joints, depths, colors = self:holdingPosition(face_direction, hold_pos)
+  self.joint_depths = depths
+  self.joint_colors = colors
+  self:updateArmVertices(joints, 0, depths)
+  --local angle = face_direction:normalized():angleTo(vector(0,1))
+  
+  --self.joints[1].x = joints[1].x + angle
+  --self:updateArmVertices({})
+end
+
+
 -- @param {vector} face_direction The digital representation of the player's direction
-function Hand:holdingPosition(face_direction)
+function Hand:holdingPosition(face_direction, hold_pos)
   local return_joints = {}
   local joint_depths = {}
-  local angles = {}
+  local joint_colors = {}
+  
+  local face_dir = face_direction:normalized()
+  -- the position of the held object relative to the player
+  --local holding_pos = (face_dir * 50) + (-face_dir:perpendicular() * 30)
+  --local holding_pos = (face_dir * 50) + vector(0,self.state_manager.base_height)
+  -- converts the position vector to polar format (x: angle, y:distance)
+  hold_pos = hold_pos:clone()
+  local angle_range = math.abs(math.abs(math.deg(face_direction:angleTo())) - 90) / 90
+  -- there are 12 values passed as parameters to the distanceArc function to create two arcs, each arc takes 6 parameters
+  -- these parameters are used for the distanceArc function when the the player is facing horizontally.
+  local horizontal_values = {0.4, 15, -1, 0, 1, 0.5, 0.6, 25, 1, -20, 0.7, 1}
+  -- these parameters are used for the distanceArc function when the the player is facing vertically.
+  local vertical_values = {0.5, 15, -1, 2, 0.7, 0.1, 0.5, 25, 1, -10, 1.6, 1}
+  -- this table will hold the parameters we will actually use
+  local use_values = {}
+  for i=1, #horizontal_values do
+    -- this interpolates between the horizontal and vertical values based on the angle of face_direction. when face_direction is at a 45 degree angle (moving diagonally) the values will be exactly halfway between either value.
+    use_values[i] = vertical_values[i] - (vertical_values[i] - horizontal_values[i]) * angle_range
+  end
+  -- this angle is what all joint angles are relative to. It's added to the angle of the first joint to acheive this effect.
   local starting_angle = 0
+  -- the angle of the first joint, relative to the starting angle
+  local first_joint_angle = 0
   local target_angle = -90
-  local arc_angles = self:jointArc(50, {-90, 50, 4, 90, 30, 6})
-  return_joints[1] = vector(math.rad(starting_angle+50), 20)
-  local increment_angle = -math.rad(50 - target_angle) / (#self.joints-1) 
+  local arc_angles = {}
+  --[[
+  if face_direction == vector(1,0) then
+    starting_angle = 20
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {-50, 15, 2, -135, 15, 2, -5, 80, 4, 110, 15, 3})
+    arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.4, 4, -1, 0, 0.5, hold_pos.y * 0.6, 7, 1, -20, 0.5})
+  elseif face_direction == vector(1,1) then
+    starting_angle = 25
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {-50, 30, 4, -20, 35, 4, 140, 20, 3})
+    arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.45, 4, -1, -1.5, 0.65, hold_pos.y * 0.55, 7, 1, -15, 0.85})
+  elseif face_direction == vector(0,1) then
+    starting_angle = 70
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {-70, 20, 4, 70, 30, 4, 140, 20, 3})
+    arc_angles = self:distanceArc(hold_pos.x, {25, 20, -1, 5, 0.8, 25, 20, 1, -5, 1.2})
+  elseif face_direction == vector(-1,1) then
+    starting_angle = 45
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {-45, 200, 11})
+    --arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y/2, 6, 1, 0, 1, hold_pos.y/2, 5, -1, 0, 1})
+    arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.5, 4, -1, -1.5, 0.65, hold_pos.y * 0.55, 7, 1, -15, 0.85})
+  elseif face_direction == vector(-1,0) then
+    starting_angle = 100
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {135, 20, 2, 200, 20, 2, 230, 30, 4, 160, 20, 3})
+    arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.4, 4, -1, 0, 0.5, hold_pos.y * 0.6, 7, 1, -20, 0.5})
+  elseif face_direction == vector(-1,-1) then
+    starting_angle = -135
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {-200, 20, 3, -160, 40, 4, -50, 45, 4})
+    arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.5, 4, -1, -1.5, 0.65, hold_pos.y * 0.55, 7, 1, -15, 0.85})
+  elseif face_direction == vector(0,-1) then
+    starting_angle = -90
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {-180, 40, 4, -75, 55, 4, -20, 25, 3})
+    arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.5, 4, -1, -3, 0.8, hold_pos.y * 0.5, 7, 1, -10, 1.2})
+  elseif face_direction == vector(1,-1) then
+    starting_angle = -25
+    --arc_angles, joint_colors = self:jointArc(starting_angle, {-130, 20, 4, -120, 40, 3, 0, 60, 4})
+    arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.5, 4, -1, -1.5, 0.65, hold_pos.y * 0.55, 7, 1, -15, 0.85})
+  end
+  ]]
+  --return_joints[1] = vector(math.rad(starting_angle+first_joint_angle), 20)
   local arc_segments = (#self.joints-1)
-  local standard_length = 10
-  for i=1, math.ceil(arc_segments/2) do
-    angles[i] = i / math.ceil(arc_segments/2)
-    local counterpart = arc_segments - (i-1)
-    if counterpart == i then
-      angles[counterpart] = 1
-    else
-      angles[counterpart] = 2 - angles[i]
-    end
+  hold_pos = hold_pos:toPolar()
+  arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * use_values[1], use_values[2], use_values[3], use_values[4], use_values[5], use_values[6], hold_pos.y * use_values[7], use_values[8], use_values[9], use_values[10], use_values[11], use_values[12]})
+  --local arc1_angle = math.rad(45)
+  --local arc1_distance = (hold_pos.y * 0.5) / math.cos(arc1_angle)
+  self.test_hold_pos = hold_pos
+  local arc1_end = (hold_pos:normalized() * hold_pos:len() * 0.3):rotateInplace(math.rad(-40))
+  self.test_hold_seg = arc1_end
+  local arc1, result_angle = self:distanceArc(-arc1_end:angleTo() + math.pi/2, {arc1_end:len(), 20, -1, 10, 1, 2})
+
+  local arc2_end = hold_pos - arc1_end
+  -- I really don't know why this works but I don't care
+  local arc2_angle = arc2_end:angleTo(arc1_end) - math.rad(270)
+  local arc2 = self:distanceArc((hold_pos.x + (-arc2_angle + math.pi/2)) - (hold_pos.x - result_angle), {arc2_end:len(), 20, 1, -20, 0.7, 0})
+  --arc_angles = arc1
+  for i=1,#arc2 do
+    --table.insert(arc_angles, arc2[i])
   end
-  for i=1,#angles do
-    --print(angles[i])
-  end
-    
-  for i=2,#self.joints do
-    local mod = angles[i-1]
-    local big_joint = arc_angles[i-1] and arc_angles[i-1] or vector(0,10)
-    --return_joints[i] = vector(increment_angle*mod, 20*(2-mod))
+
+  --self.noodle = self.noodle - 0.2
+  --local vertical_values = {0.5, 20, -1, 0, 0.8, 0.5, 20, 1, -10, 1.6}
+  --arc_angles = self:distanceArc(-face_dir:angleTo() + math.pi/2, {100, 40, 1, 0, 1, self.noodle})
+  --arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.4, 15, -1, 0, 1, 0.5, hold_pos.y * 0.6, 25, 1, -20, 0.7, 1})
+  --arc_angles = self:distanceArc(hold_pos.x, {hold_pos.y * 0.5, 15, -1, 2, 0.7, 0.1, hold_pos.y * 0.5, 25, 1, -10, 1.6, 1})
+  for i=1,#self.joints do
+    local big_joint = arc_angles[i] and arc_angles[i] or vector(0,10)
+    --print('go: ' .. big_joint.x)
     return_joints[i] = big_joint
   end
   for i=1,#return_joints do
     joint_depths[i] = 1
   end
-  return return_joints,joint_depths
+  return return_joints,joint_depths,joint_colors
 end
 
 -- this method takes a table describing the shape of arcs and turns it into a table of joints with the shape described.
--- @param {number}(angle in degrees) starting_angle The angle of the first joint in the arm (the first joint is set outside of this function)
+-- @param {number}(angle in degrees) starting_angle The angle that the arm starts at
 --[[ @param {table} arcs A table describing the shape of an arc with this format:
   {target_angle, length, segments, ...} 
   {number} target_angle The angle you want the last joint in the arc to end up 
@@ -460,20 +557,131 @@ end
   ]]
 function Hand:jointArc(starting_angle, arcs)
   local return_joints = {}
+  local return_colors = {}
   local last_angle = starting_angle
   for i=1,math.floor(#arcs/3) do
     local target_angle = arcs[i*3-2]
-    local arc_length = arcs[1*3-1]
+    local arc_length = arcs[i*3-1]
     local segments = arcs[i*3]
-    
+
     local increment_angle = -math.rad(last_angle - target_angle) / segments
     local increment_length = arc_length / segments
+    local joint_color = i % 2 > 0 and {1,0,0,1} or {0,0,1,1}
     for j=1,segments do
-      table.insert(return_joints, vector(increment_angle, increment_length))
+      -- for the first joint in the arm, we set the starting angle. Since each joint is relative to the last, setting the first joint this way will affect all subsequent joints
+      if i==1 and j==1 then 
+        table.insert(return_joints, vector(math.rad(starting_angle) + increment_angle, increment_length))
+      else
+        table.insert(return_joints, vector(increment_angle, increment_length))
+      end
+      table.insert(return_colors, joint_color)
     end
     last_angle = target_angle
   end
-  return return_joints
+  return return_joints, return_colors
+end
+
+function Hand:distanceArc(starting_angle, arcs)
+  --print(math.deg(starting_angle))
+  local return_joints = {}
+  --local increment_distance = distance / segments
+  --local increment_angle = -math.rad(starting_angle - (80)) / (segments-1)
+  local last_angle = starting_angle
+  
+  for i=1,math.floor(#arcs/6) do
+    -- the distance you want the arc the cover in the direction of starting_angle
+    local r = arcs[i*6-5]/2
+    -- how many segments make up the arc
+    local segments = arcs[i*6-4]
+    -- either 1 or -1, decides what side of the target line the arc will be on
+    local side = arcs[i*6-3]
+    -- a number that effects the radius of each arc point, bending the arc in weird ways
+    local bend = arcs[i*6-2]
+    -- how much you want to squash or stretch the arc.
+    local squash = arcs[i*6-1]
+    -- a small value around 1 that makes the end of the arc less steep. a value of 0 doesn't do anything, and negative values make an insane lightning bolt effect.
+    local smooth = arcs[i*6]
+
+    -- the position of the last arc point in the series. initialized to the position of the arc when then angle is 0.
+    local last_arc_point = vector(r,0)
+    for i=1,segments do
+      local range = (i) / (segments)
+      --local distance_mod = 1 - math.sin(math.pi/2 + (range * 2 * math.pi/2)) * 1.5
+      --local line_segment = increment_distance * distance_mod
+      --local joint_distance = increment_distance / math.cos(last_angle)
+      
+      --print('lol: ' .. math.deg(vector(current_width, current_height):toPolar().x))
+      local joint_height = math.sin(range * math.pi) * 20
+      --local r = 25
+      --local bend = 50
+      --local x = math.abs(math.abs(1 - (range * 2)) - 1) * (math.pi/2)
+      --print(math.abs(math.abs(1 - (range * 2)) - 1))
+      --local mod_r = math.abs(math.abs(1 - (range * 2)) - 1) * 0 + r
+      local mod_r = r
+      mod_r = -(1 - (range * 2)) * bend + r
+      local smooth_magnitude = -r / 2
+      --mod_r = math.pow(math.abs(math.abs((range * 2) - 1) - 1), 0.5) * -100 + mod_r
+      mod_r = math.sin(math.pow(1-range, smooth * (1-range)) * math.pi) * smooth_magnitude + mod_r
+      
+      --print(mod_r)
+      --print(1 - (range * 2))
+      local x = range * math.pi
+      --[[
+      local apex_rad = math.sqrt(10^2 + r^2)
+      local apex_angle = math.acos(50/apex_rad)
+      local rad_dif = apex_rad - r
+      local apex_dif = math.pi - apex_angle
+      -- should be 1 at when x = 180
+      local apex_range = math.abs(x - apex_angle) / apex_dif
+      local mod_r = r + (rad_dif * (1 - apex_range))
+      ]]
+      --mod_r = (new_adj/math.cos(x))
+      --print(new_adj/math.cos(x))
+      --print(math.deg(x))
+
+      -- the position of the current point in the arc
+      local arc_point = vector(math.cos(x) * mod_r, math.sin(x) * mod_r)
+      
+      joint_height = arc_point.y - last_arc_point.y
+      last_arc_point.y = last_arc_point.y + joint_height
+      --joint_height = (math.tan(x)) * 50
+   
+      --joint_height = joint_height - current_height 
+      --local joint_width = (r-bend) - (current_width + adj)
+      --current_width = current_width + joint_width
+      
+      local joint_width = (last_arc_point.x - bend) - arc_point.x
+      last_arc_point.x = last_arc_point.x - joint_width
+      
+      --print(current_width)
+      --print(joint_width)
+      --joint_width = math.max(joint_width, 0)
+      --print(joint_width)
+      
+      --print(current_height)
+      --print(line_segment ..  " / " .. joint_distance .. " = " .. line_segment/joint_distance)
+      --[[
+      if i==1 then
+        table.insert(return_joints, vector(math.rad(starting_angle), joint_distance))
+      else
+        table.insert(return_joints, vector(increment_angle, joint_distance))
+      end
+      ]]
+      --print(vector(joint_height, joint_width).y)
+      --print(utilities.ellipsify(vector(joint_height, joint_width)).y)
+      -- here is where we squash or stretch the arc using the ellipsify function
+      joint_height = utilities.ellipsify(vector(joint_width, joint_height), squash).y
+      this_joint = vector(joint_width, joint_height * side):toPolar()
+      --print(math.deg(this_joint.x))
+      this_joint.x = this_joint.x - last_angle
+      last_angle = this_joint.x + last_angle
+      --print('huhh :' .. math.deg(this_joint.x))
+      --print(math.deg(last_angle) .. " - " .. math.deg(this_joint.x))
+      table.insert(return_joints, this_joint)
+      --last_angle = last_angle + increment_angle
+    end
+  end
+  return return_joints, last_angle
 end
 
 function Hand:cannedSwing(angle, dt)
@@ -483,9 +691,11 @@ function Hand:cannedSwing(angle, dt)
 	--table.insert(vertices, vector(0, 0))
   local last_angle = angle
   local swing_angle = math.rad(0)
-  local MAX_ANGLE = math.rad(20) -- the maximum angle between vertices
+  local MAX_ANGLE = math.rad(200 / (#self.joints-1)) -- the maximum angle between vertices
   local SLAP_SPEED = 1 -- controls how fast the middle of the slap motion is compared to the beginning and end of the motion
   local angle_offset = MAX_ANGLE
+  -- the length of the entire arm
+  local arm_length = 85
   
   -- this range is used to modify the angle offset so that by the time the angle is such that the first vertex is horizontally aligned with the player, then the angle offset will become 0 and all vertices will be horizontally aligned. 
   -- since math.sin already returns a normalized value, we don't have to math.min anything
@@ -499,13 +709,13 @@ function Hand:cannedSwing(angle, dt)
 
   local swing_dif = angle_sign < 1 and (1-angle_dif) * math.rad(-180) or (1-angle_dif) * math.rad(45)
   --return_joints[1] = vector(swing_angle + swing_dif, self.standard_segment_length)
-  return_joints[1] = vector(self.arm_angle, self.standard_segment_length)
+  return_joints[1] = vector(self.arm_angle, arm_length / (#self.joints-1))
   
   for i=2, #self.joints do
     -- range from 0 (second joint) to 1 (last joint)
     local joint_range = (i-2) / (#self.joints-2)
     -- the maximum angle this specific joint can have. The further the joint is along the arm, the smaller the maximum angle
-    local joint_max_angle = MAX_ANGLE - (joint_range * math.rad(10))
+    local joint_max_angle = MAX_ANGLE - (joint_range * math.rad(100 / (#self.joints-1)))
     -- range from 0 (near the extents of the swing) to 0.3 (near the middle of the swing)
     -- these two magic numbers are fun to play around with
     local speed_range = ((angle_dif * 3) * (joint_range * 0.5)) + 1
@@ -523,10 +733,9 @@ function Hand:cannedSwing(angle, dt)
     else 
       angle_offset = math.max(angle_offset, joint_max_angle * self.swing_direction)
     end
-    local joint = vector(angle_offset, self.standard_segment_length)
+    local joint = vector(angle_offset, arm_length / (#self.joints-1))
 		table.insert(return_joints, joint)
 	end
-  
   --return self:jointsToVertices(return_joints, angle_dif)
   return return_joints, angle_dif
 end
@@ -535,13 +744,15 @@ end
 -- @param {table of vectors} joints A table holding vectors in polar format, each representing a segment in the arm. The table can hold up to the same number of joints as self.joints. If too many joints are supplied, an error is thrown.
 -- @param {number} speed A number between 0 and 1, passed to the jointsToVertices() function.
 -- @param {table of numbers} segment_depths A table holding the depths of each joint. passed to the jointsToVertices().
-function Hand:updateArmVertices(new_joints, speed, segment_depths)
+function Hand:updateArmVertices(new_joints, speed, segment_depths, joint_colors)
   if #new_joints > #self.joints then error('Too many joints supplied to function updateArmVertices()') end
   for i=1, #new_joints do
     -- we check that the value of the joint isn't nil before copying it over so that we could skip joints if we wanted
     if new_joints[i] then self.joints[i] = new_joints[i] end
   end
-  self.mesh:setVertices(self:jointsToVertices(self.joints, speed, segment_depths))
+  speed = speed or 0
+  local vertices = self:jointsToVertices(self.joints, speed, segment_depths, joint_colors)
+  self.mesh:setVertices(vertices)
   self.end_arm_pos = self:jointsToPlayerCoordinates(self.joints)[#self.joints]
 end
   
@@ -550,7 +761,8 @@ end
 -- @param {table of vectors} joints A table holding vectors in polar format, each representing a segment in the arm.
 -- @param {number} speed A number between 0 and 1, used to decide how large the smear effect will be (not used right not)
 -- @param {table of numbers} segment_depths A table holding the depths of each joint. If the table isn't supplied, then the depth of the segment is set to a default.
-function Hand:jointsToVertices(joints, speed, segment_depths)
+-- @param {table of numbers} joint_colors A table holding 4 numbers representing the color of that joint
+function Hand:jointsToVertices(joints, speed, segment_depths, joint_colors)
   local MAX_WIDTH = 2 --the width the arm at the end of the arm
   local vertices = {}
   table.insert(vertices, {self.arm_origin.x, self.arm_origin.y, 0, 0, 0, 1, 0.5, 1, 0})
@@ -618,12 +830,24 @@ function Hand:jointsToVertices(joints, speed, segment_depths)
       depth = vector(0, 1) * new_vertex > 0 and 1 or 0
     end
     
+    -- this sets the depth value of the first vertex (the one at 0,0) to always be the same as the depth value of the first joint (the second and third vertices)
     if i==1 then vertices[1][9] = depth end
     
-    table.insert(vertices, {new_vertex.x, new_vertex.y, 0, 0, 0, 1, 0.5, 1, depth})
+    local r = 0
+    local g = 1
+    local b = 0.5
+    local a = 1
+    if joint_colors and joint_colors[i] then
+      r = joint_colors[i][1] or 0
+      g = joint_colors[i][2] or 1
+      b = joint_colors[i][3] or 0.5
+      a = joint_colors[i][4] or 1
+    end
+    
+    table.insert(vertices, {new_vertex.x, new_vertex.y, 0, 0, r, g, b, a, depth})
     --new_vertex = last_path + (relative_joint_pos - (negative_vertex_pos * smear_length))
     new_vertex = last_path + (relative_joint_pos - negative_vertex_pos)
-    table.insert(vertices, {new_vertex.x, new_vertex.y, 0, 0, 0, 1, 0.5, 1, depth})
+    table.insert(vertices, {new_vertex.x, new_vertex.y, 0, 0, r, g, b, a, depth})
     
     last_path = last_path + relative_joint_pos
   end 
@@ -676,6 +900,16 @@ function Hand:draw(x, y, order)
   love.graphics.setShader()
   local end_circle = vector(x,y) + self.end_arm_pos
   love.graphics.circle('line', end_circle.x, end_circle.y, 5)
+
+  --love.graphics.line(x, y, x, y+100)
+  --local target = (vector(-1,1):normalizeInplace() * 50) + vector(0,self.state_manager.base_height)
+  love.graphics.setColor(1, 0, 0, 1)
+  local target = (self.test_hold_pos:normalized() * 50)
+  --love.graphics.line(x, y, x+target.x, y+target.y)
+  love.graphics.setColor(1, 1, 1, 1)
+  local arc1 = self.test_hold_seg
+  --love.graphics.line(x, y, x+arc1.x, y+arc1.y)
+  --love.graphics.line(x+arc1.x, y+arc1.y, x+target.x, y+target.y)
 end
 
 return Hand

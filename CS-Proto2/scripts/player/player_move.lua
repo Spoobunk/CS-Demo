@@ -15,9 +15,13 @@ function Player_Move:new(state_manager)
   self.face_direction = 1
   -- digital vector keeping track of movement input at any given moment
   self.raw_input = vector(0,0)
+  -- keeps track of what raw_input was on the frame before this one
+  self.last_raw_input = vector(0,0)
   -- digital representation of movement input, for analog input it is approximated
   self.digital_input = vector(0,0)
-  -- vector keeps track of latest movement input (it is never 0)
+  -- keeps track of what digital_input was on the frame before this one
+  self.last_digital_input = vector(0,0)
+  -- vector keeps track of latest movement input (x nor y are never 0)
   self.last_input = vector(1,1)
     
   self.velocity = vector(0,0)
@@ -46,6 +50,9 @@ function Player_Move:update(dt, axis_x, axis_y)
   self.move_timer:update(dt)
   self.height_timer:update(dt)
   
+  self.last_digital_input = self.digital_input
+  self.last_raw_input = self.raw_input
+  
   self.raw_input = vector(axis_x, axis_y)
   local input_x = (axis_x == 0 and 0 or axis_x / math.abs( axis_x ))
   local input_y = (axis_y == 0 and 0 or axis_y / math.abs( axis_y ))
@@ -64,7 +71,7 @@ function Player_Move:update(dt, axis_x, axis_y)
   if self.state_manager.current_state.flip_sprite_horizontal then self.state_manager.player_components.anim:flipSpriteHorizontal(self.face_direction) else  end
     
   -- does running animation
-  if(self.state_manager:Current_State_Is("idle")) then
+  if(self.state_manager:Current_State_Is("idle") or self.state_manager:Current_State_Is("holding")) then
     local anim = self.state_manager.player_components.anim
     if self.digital_input.x == 0 and self.digital_input.y == 0 then
       anim:Switch_Animation(anim.idle_anim)
@@ -74,8 +81,9 @@ function Player_Move:update(dt, axis_x, axis_y)
     end
   end
   
-  if(self.state_manager:Current_State_Is("holding")) then
-    self.state_manager.hand:holdingPosition(self.digital_input)
+  if(self.state_manager:Current_State_Is("holding") and self.last_raw_input ~= self.raw_input and self.raw_input ~= vector(0,0)) then
+    --self.state_manager.hand:changeHoldingPosition(self.digital_input)
+    self.state_manager.player_components.grab:updateHoldingArm(self.raw_input)
   end
 end
 

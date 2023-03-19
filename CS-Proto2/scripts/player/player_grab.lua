@@ -26,7 +26,7 @@ function PlayerGrab:startHold()
   self.state_manager:change_states('holding')
   self.grab_timer:after(0.08, function() self.state_manager.player_components.move:Set_Movement_Settings(nil, nil, 25, 0.5, 100) end)
   self.holding:moveTo(vector(self.state_manager.ground_pos.x + (60 * self.state_manager.player_components.move.face_direction), self.state_manager.ground_pos.y))
-  self.holding.height = 50
+  self.holding.height = 20
    -- retrieves the current position of the end of the arm from the hand class
   local end_of_arm = self.state_manager.pos + self.state_manager.hand:getArmEndPosition()
   -- we move the held thing to the correct ground position to make it so that its sprite lines up with the end of the arm
@@ -73,6 +73,13 @@ function PlayerGrab:update(dt)
     end
   end
 
+end
+
+function PlayerGrab:updateHoldingArm(face_direction)
+  -- the position where the arm will end
+  local hold_pos = (face_direction:normalized() * 40) + (-face_direction:normalized():perpendicular() * 30) + vector(0,self.state_manager.base_height - self.holding.base_height - self.holding.height)
+  --local hold_pos = (face_direction:normalized() * 50)
+  self.state_manager.hand:changeHoldingPosition(face_direction, hold_pos)
 end
 
 function PlayerGrab:readyThrow()

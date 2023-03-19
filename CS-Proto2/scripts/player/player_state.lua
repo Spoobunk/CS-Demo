@@ -82,7 +82,7 @@ function Player:new(x, y, collision_world, tile_world)
   self:setCollisionCondition('Player', 'Enemy', function() return self.player_components.health:isVulnerable() end)
   
   self.shadow_object = ShadowObject(self, 15, 7)
-  self.hand = Hand(self, 11)
+  self.hand = Hand(self, 40)
 end
 
 function Player:change_states(to)
@@ -172,12 +172,20 @@ function Player:draw()
   --self:drawRenderPosition()
   --self:drawTileCollider()
   love.graphics.setColor(255, 0, 0, 1)
+  
+  local di = self.player_components.move.digital_input:normalized() * 50
+  local dmod = -di:perpendicular():normalizeInplace() * 30
+  local line1 = self.pos + di
+  local line2 = line1 + dmod
+  love.graphics.line(self.pos.x,self.pos.y, line1.x, line1.y)
+  --love.graphics.line(line1.x, line1.y, line2.x, line2.y)
+  --love.graphics.circle('line', line2.x, line2.y, 5)
   -- drawing absolute position
   --love.graphics.points(self.pos:unpack())
   --love.graphics.points(self.ground_pos:unpack())
   love.graphics.setColor(0, 0, 255, 1)
 
-  self:drawColliders()
+  --self:drawColliders()
   love.graphics.setColor(255, 255, 255, 1)
 end
 
